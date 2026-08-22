@@ -1,0 +1,17 @@
+{
+  "name": "아파트 조경수 실태조사",
+  "short_name": "조경수조사",
+  "description": "아파트 조경수·화단 실태조사를 기록하고 구글시트로 관리하는 앱",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F1F4EC",
+  "theme_color": "#2C4A3B",
+  "lang": "ko",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
