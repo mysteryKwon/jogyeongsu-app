@@ -3,270 +3,647 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
-<title>여행이력</title>
+<title>조경수 실태조사</title>
 
 <!-- PWA: 홈 화면 설치 및 전체화면 실행 설정 -->
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#1D3557">
+<meta name="theme-color" content="#3B6350">
 <link rel="icon" href="icons/favicon-32.png" sizes="32x32">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="여행이력">
-
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<meta name="apple-mobile-web-app-title" content="조경수조사">
 
 <style>
   :root{
-    --paper:#FAF6EC; --paper-dark:#F0E9D8; --card:#FFFFFF; --ink:#2B2620;
-    --navy:#1D3557; --navy-deep:#132539; --heading:#132539; --gold:#C9972E; --brick:#B14A32;
-    --line:#DDD3BC; --sub:#7a7264; --shadow:0 2px 8px rgba(43,38,32,0.08);
+    --pine:#3B6350;
+    --pine-dark:#1D332A;
+    --sage-bg:#F8FAF5;
+    --card:#FFFFFF;
+    --line:#DCE3D4;
+    --ink:#2A2E27;
+    --sub:#6B7568;
+    --rust:#B5651D;
+    --danger:#B23A2E;
+    --success:#3F7D4A;
+    --warn-bg:#FBF0E4;
+    --radius:16px;
+    --chip-bg:#EFF3EA;
+    --input-bg:#FFFFFF;
     color-scheme: light;
   }
   html[data-theme="dark"]{
-    --paper:#1B1912; --paper-dark:#242119; --card:#252219; --ink:#F2EDE0;
-    --navy:#6E96C4; --navy-deep:#0D1620; --heading:#DCE8F5; --gold:#E0B24F; --brick:#E0836A;
-    --line:#3B362A; --sub:#A79E8C; --shadow:0 2px 10px rgba(0,0,0,0.35);
+    --pine:#75B48D;
+    --pine-dark:#0F1712;
+    --sage-bg:#1D2620;
+    --card:#26302A;
+    --line:#45524A;
+    --ink:#FFFFFF;
+    --sub:#AEB8AC;
+    --rust:#E0A25C;
+    --danger:#E27F72;
+    --success:#7FC48D;
+    --warn-bg:#2E2417;
+    --chip-bg:#354136;
+    --input-bg:#2C362D;
     color-scheme: dark;
   }
+  html[data-theme="dark"] header.app{ background:#0F1712; }
+  html[data-theme="dark"] .status-dot{ background:#75B48D; }
+  html[data-theme="dark"] nav.tabs{ background:rgba(255,255,255,.06); }
+  html[data-theme="dark"] nav.tabs button.active{ background:#26302A; color:var(--pine); }
+  html[data-theme="dark"] .submit-bar{ background:rgba(20,26,21,.95); }
+  html[data-theme="dark"] .btn-sm{ background:var(--card); }
+  html[data-theme="dark"] .chip.state-정상{background:#1E3B26;color:#8FD6A0;}
+  html[data-theme="dark"] .chip.state-주의{background:#3A2C15;color:#E0A25C;}
+  html[data-theme="dark"] .chip.state-생육불량{background:#3D2418;color:#E3946A;}
+  html[data-theme="dark"] .chip.state-고사위험{background:#3D1D18;color:#E27F72;}
+  html[data-theme="dark"] .chip.state-고사{background:#2E120F;color:#D66A5C;}
+  html[data-theme="dark"] .zone-chip{ background:var(--chip-bg); }
+  html[data-theme="dark"] .zone-chip button{ background:rgba(255,255,255,.12); color:var(--pine); }
   *{box-sizing:border-box;}
-  html,body{ margin:0; padding:0; background:var(--paper); color:var(--ink); font-family:'Inter',sans-serif; -webkit-font-smoothing:antialiased; }
-  h1,h2,h3{ font-family:'Fraunces',serif; font-weight:700; margin:0; }
-  .app{ max-width:520px; margin:0 auto; min-height:100vh; padding-bottom:76px; position:relative; }
-
-  .topbar{ padding:18px 20px 14px; border-bottom:2px solid var(--ink); background:var(--paper); position:sticky; top:0; z-index:5; }
-  .topbar .row{ display:flex; align-items:center; justify-content:space-between; }
-  .topbar .eyebrow{ font-family:'Space Mono',monospace; font-size:15px; letter-spacing:0.12em; text-transform:uppercase; color:var(--brick); margin-bottom:4px; }
-  .topbar h1{ font-size:33px; color:var(--heading); }
-  .status-line{ display:flex; align-items:center; gap:6px; margin-top:6px; font-size:15px; color:var(--sub); }
-  .status-dot{ width:7px; height:7px; border-radius:50%; background:#3F7D4A; flex-shrink:0; }
-  .status-dot.off{ background:#B23A2E; }
-  .ver-badge{ font-family:'Space Mono',monospace; font-size:15px; color:var(--sub); }
-
-  .view{ display:none; padding:18px 20px 8px; animation:fade .2s ease; }
-  .view.active{ display:block; }
-  @keyframes fade{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);} }
-
-  .card{ background:var(--card); border:1.5px solid var(--line); border-radius:12px; padding:16px; margin-bottom:14px; box-shadow:var(--shadow); }
-  .section-label{ font-size:15px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:var(--navy); margin-bottom:10px; }
-
-  .field{ margin-bottom:14px; }
-  .field label{ display:block; font-size:16px; font-weight:600; color:var(--navy); margin-bottom:5px; }
-  .hint{ font-size:15px; color:var(--sub); margin-top:4px; }
-  .field input, .field textarea, .field select{
-    width:100%; padding:13px 14px; border:1.5px solid var(--line); border-radius:6px;
-    font-family:'Inter',sans-serif; font-size:19.5px; background:var(--card); color:var(--ink);
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--sage-bg);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothic','Apple SD Gothic Neo',system-ui,sans-serif;
+    padding-bottom:96px;
+    -webkit-tap-highlight-color:transparent;
   }
-  .field input:focus, .field textarea:focus, .field select:focus{ outline:none; border-color:var(--navy); }
-  .row2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-  textarea{ min-height:60px; resize:vertical; }
+  header.app{
+    position:sticky; top:0; z-index:20;
+    background:var(--pine);
+    color:#fff;
+    padding:14px 16px 12px;
+    box-shadow:0 2px 8px rgba(0,0,0,.12);
+  }
+  header.app .title-row{display:flex;align-items:center;justify-content:space-between;}
+  header.app h1{font-size:18.5px;margin:0;font-weight:800;letter-spacing:-.2px;display:flex;align-items:center;gap:6px;}
+  .status-dot{width:8px;height:8px;border-radius:50%;background:#8FBF9A;display:inline-block;}
+  .status-dot.off{background:#E0A05B;}
+  .subtitle{font-size:12.5px;color:#C9D8CB;margin-top:2px;}
 
-  .chip-group{ display:flex; flex-wrap:wrap; gap:8px; }
-  .chip{ padding:11px 17px; border:1.5px solid var(--line); border-radius:20px; font-size:18px; cursor:pointer; user-select:none; background:var(--card); color:var(--ink); }
-  .chip input{ display:none; }
-  .chip.selected{ background:var(--navy); border-color:var(--navy); color:#fff; }
+  nav.tabs{
+    display:flex; gap:6px; margin-top:10px;
+    background:rgba(255,255,255,.12);
+    border-radius:12px; padding:4px;
+  }
+  nav.tabs button{
+    flex:1; border:none; background:transparent; color:#DCE7DD;
+    font-size:15px; font-weight:700; padding:9px 4px; border-radius:9px;
+    cursor:pointer;
+  }
+  nav.tabs button.active{ background:#fff; color:var(--pine); }
 
-  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:12px 18px; border:none; border-radius:6px; font-size:19.5px; font-weight:600; cursor:pointer; font-family:'Inter',sans-serif; }
-  .btn:active{ transform:scale(0.98); }
-  .btn:disabled{ opacity:0.6; cursor:default; }
-  .btn-primary{ background:var(--navy); color:#fff; width:100%; padding:13px; }
-  .btn-ghost{ background:transparent; color:var(--navy); border:1.5px solid var(--navy); }
-  .btn-danger{ background:transparent; color:var(--brick); border:1.5px solid var(--brick); font-size:16px; padding:7px 10px; }
-  .btn-photo{ background:var(--paper-dark); color:var(--navy); border:1.5px dashed var(--navy); width:100%; padding:14px; font-size:18px; }
-  .btn-small{ font-size:16px; padding:7px 12px; }
-  .btn-sm{ padding:9px 12px; border-radius:6px; border:1.5px solid var(--line); background:var(--card); color:var(--navy); font-size:18px; cursor:pointer; }
+  main{ padding:14px; max-width:560px; margin:0 auto; }
 
-  .trip-select-row{ display:flex; gap:8px; margin-bottom:16px; }
-  .trip-select-row select{ flex:1; }
+  .card{
+    background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:16px; margin-bottom:14px;
+  }
+  .section-label{
+    font-size:13px; font-weight:800; color:var(--rust); text-transform:uppercase;
+    letter-spacing:.5px; margin:2px 0 10px; display:flex; align-items:center; gap:6px;
+  }
+  .section-label::before{content:'';width:4px;height:14px;background:var(--rust);border-radius:2px;display:inline-block;}
 
-  .trip-banner{ background:var(--navy); color:var(--paper); border-radius:10px; padding:14px 16px; margin-bottom:16px; }
-  .trip-banner .t-title{ font-family:'Fraunces',serif; font-weight:700; font-size:25px; color:#fff; }
-  .trip-banner .t-dates{ font-family:'Space Mono',monospace; font-size:16px; opacity:0.85; margin-top:3px; }
+  .field{ margin-bottom:12px; }
+  .field label{
+    display:block; font-size:14.5px; font-weight:700; color:var(--ink); margin-bottom:5px;
+  }
+  .field .req{ color:var(--danger); }
+  .field input[type=text],
+  .field input[type=number],
+  .field input[type=date],
+  .field select,
+  .field textarea{
+    width:100%; padding:11px 12px; border-radius:10px; border:1.5px solid var(--line);
+    font-size:16.5px; background:var(--input-bg); color:var(--ink); font-family:inherit;
+    -webkit-appearance:none; -moz-appearance:none; appearance:none;
+  }
+  .field textarea{ min-height:64px; resize:vertical; }
+  .field input:focus, .field select:focus, .field textarea:focus{
+    outline:none; border-color:var(--pine); background:var(--card); color:var(--ink);
+  }
+  .row2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 
-  .section-title{ font-family:'Fraunces',serif; font-weight:700; font-size:20.5px; color:var(--heading); margin:18px 0 10px; }
-  .stamp{ width:44px; height:44px; border-radius:50%; border:2px dashed var(--brick); display:flex; align-items:center; justify-content:center; flex-shrink:0; font-family:'Space Mono',monospace; font-weight:700; font-size:14px; color:var(--brick); transform:rotate(-8deg); text-align:center; line-height:1.15; }
+  .chip-select{ display:flex; align-items:center; gap:8px; }
+  .chip{
+    font-size:12px; font-weight:800; padding:3px 9px; border-radius:999px; white-space:nowrap;
+    background:var(--chip-bg); color:var(--sub);
+  }
+  .chip.state-정상{background:#E4F1E6;color:var(--success);}
+  .chip.state-주의{background:#FBF0E4;color:var(--rust);}
+  .chip.state-생육불량{background:#FCE7DE;color:#C0562B;}
+  .chip.state-고사위험{background:#FADAD6;color:var(--danger);}
+  .chip.state-고사{background:#F2CFCB;color:#7A1F17;}
+  .stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+  .stats-cell{border:1px solid var(--line);border-radius:12px;padding:12px 10px;text-align:center;background:var(--input-bg);}
+  .stats-cell .n{font-size:26.5px;font-weight:800;line-height:1.1;}
+  .stats-cell .l{font-size:13px;color:var(--sub);margin-top:4px;}
+  .stats-cell.g-정상 .n{color:var(--success);}
+  .stats-cell.g-주의 .n{color:var(--rust);}
+  .stats-cell.g-생육불량 .n{color:#C0562B;}
+  .stats-cell.g-고사위험 .n,.stats-cell.g-고사 .n{color:var(--danger);}
+  .stats-list{display:flex;flex-direction:column;gap:8px;}
+  .stats-row{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--input-bg);}
+  .stats-row .l{font-size:15.5px;}
+  .stats-row .n{font-size:17.5px;font-weight:800;color:var(--pine);}
+  .stats-updated{font-size:13px;color:var(--sub);text-align:right;margin-top:2px;}
 
-  .trip-card{ background:var(--card); border:1.5px solid var(--line); border-radius:10px; padding:14px; margin-bottom:12px; box-shadow:var(--shadow); cursor:pointer; }
-  .trip-card .tc-top{ display:flex; gap:12px; align-items:center; }
-  .trip-card .tc-title{ font-family:'Fraunces',serif; font-weight:700; font-size:23px; color:var(--heading); }
-  .trip-card .tc-sub{ font-size:16px; color:var(--sub); font-family:'Space Mono',monospace; margin-top:2px; }
-  .trip-card .tc-meta{ font-size:16px; color:var(--navy); margin-top:6px; }
-  .trip-card .rating{ color:var(--gold); font-size:16px; letter-spacing:1px; margin-top:4px; }
-  .trip-card .tc-actions{ display:flex; gap:8px; margin-top:10px; }
+  .photo-box{
+    border:1.5px dashed var(--line); border-radius:12px; padding:12px; background:var(--input-bg);
+  }
+  .photo-actions{ display:flex; gap:8px; margin-bottom:10px; }
+  .btn-sm{
+    flex:1; padding:10px; border-radius:10px; border:1.5px solid var(--pine);
+    background:#fff; color:var(--pine); font-weight:700; font-size:15px;
+  }
+  .thumbs{ display:flex; flex-wrap:wrap; gap:8px; }
+  .thumb{ position:relative; width:72px; height:72px; border-radius:10px; overflow:hidden; border:1px solid var(--line); }
+  .thumb img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .thumb .rm{
+    position:absolute; top:2px; right:2px; width:20px; height:20px; border-radius:50%;
+    background:rgba(0,0,0,.55); color:#fff; border:none; font-size:13px; line-height:20px; text-align:center; padding:0;
+  }
 
-  .timeline{ margin-top:12px; border-top:1px dashed var(--line); padding-top:12px; }
+  .specimen-tag{
+    display:inline-flex; align-items:center; gap:6px; font-family:'Courier New',monospace;
+    font-size:13px; font-weight:700; color:var(--pine); background:var(--chip-bg); border:1px dashed var(--pine);
+    border-radius:8px; padding:4px 10px; margin-bottom:10px;
+  }
 
-  .day-block{ margin-top:14px; padding-top:14px; border-top:1px dashed var(--line); }
-  .day-block:first-of-type{ margin-top:12px; padding-top:0; border-top:none; }
-  .day-header{ font-family:'Fraunces',serif; font-weight:700; font-size:18px; color:var(--heading); background:var(--paper-dark); padding:6px 10px; border-radius:6px; margin-bottom:8px; letter-spacing:0.02em; }
-  .day-table{ width:100%; border-collapse:collapse; font-size:16px; }
-  .day-table th{ text-align:left; color:var(--navy); font-weight:600; padding:5px 10px 5px 0; white-space:nowrap; width:64px; vertical-align:top; }
-  .day-table td{ padding:5px 0; color:var(--ink); line-height:1.5; }
-  .day-table tr + tr th, .day-table tr + tr td{ border-top:1px solid var(--line); padding-top:7px; }
-  .day-table tr:first-child th, .day-table tr:first-child td{ padding-top:2px; }
-  .leg-item{ display:flex; gap:10px; padding:10px 0; border-bottom:1px solid var(--line); }
-  .leg-item:last-child{ border-bottom:none; }
-  .leg-day{ font-family:'Space Mono',monospace; font-size:15px; color:var(--brick); font-weight:700; width:44px; flex-shrink:0; }
-  .leg-body{ flex:1; min-width:0; font-size:18px; }
-  .leg-route{ font-weight:600; color:var(--heading); }
-  .leg-tags{ font-size:16px; color:var(--navy); margin-top:2px; }
-  .leg-memo{ font-size:16px; color:var(--ink); margin-top:4px; line-height:1.5; }
-  .leg-spend{ font-size:16px; color:var(--sub); margin-top:2px; }
-  .leg-actions{ margin-top:6px; display:flex; gap:6px; }
-  .leg-actions button{ font-size:15px; padding:4px 9px; border-radius:12px; border:1px solid var(--line); background:var(--card); cursor:pointer; color:var(--navy); }
-  .leg-actions button.rm{ color:var(--brick); border-color:var(--brick); }
+  .submit-bar{
+    position:sticky; bottom:0; z-index:30;
+    background:rgba(241,244,236,.95); backdrop-filter:blur(6px);
+    border-top:1px solid var(--line); padding:10px 14px calc(10px + env(safe-area-inset-bottom));
+  }
+  .submit-bar .inner{ max-width:560px; margin:0 auto; }
+  button.submit{
+    width:100%; padding:15px; border:none; border-radius:12px; background:var(--pine);
+    color:#fff; font-size:17px; font-weight:800; letter-spacing:-.2px;
+  }
+  button.submit:disabled{ background:#9AAC9F; }
 
-  .empty{ text-align:center; padding:60px 20px; color:var(--sub); }
-  .empty .stamp{ margin:0 auto 14px; }
+  .toast{
+    position:fixed; left:50%; top:14px; transform:translateX(-50%); z-index:50;
+    background:var(--pine-dark); color:#fff; padding:11px 18px; border-radius:10px;
+    font-size:15px; font-weight:600; box-shadow:0 6px 16px rgba(0,0,0,.2);
+    max-width:88vw; text-align:center; opacity:0; pointer-events:none; transition:opacity .25s, top .25s;
+  }
+  .toast.show{ opacity:1; top:60px; }
+  .toast.error{ background:var(--danger); }
 
-  .filters{ display:flex; gap:8px; margin-bottom:14px; overflow-x:auto; padding-bottom:4px; }
-  .filters select, .filters input{ border:1.5px solid var(--line); border-radius:6px; padding:8px 10px; font-size:18px; background:var(--card); color:var(--ink); }
+  .hint{ font-size:12.5px; color:var(--sub); margin-top:2px; }
+  .settings-note{ font-size:14px; color:var(--sub); line-height:1.6; }
 
-  .map-wrap{ border:1.5px solid var(--line); border-radius:10px; overflow:hidden; background:#EAF1F3; position:relative; }
-  html[data-theme="dark"] .map-wrap{ background:#1B2530; }
-  .map-wrap svg{ display:block; width:100%; height:auto; }
-  .map-dot{ fill:var(--brick); stroke:var(--paper); stroke-width:1.5; cursor:pointer; }
-  .map-legend{ font-size:16px; color:var(--sub); margin-top:10px; text-align:center; }
-  .pin-tooltip{ position:absolute; background:var(--navy-deep); color:#fff; padding:6px 10px; border-radius:6px; font-size:16px; pointer-events:none; opacity:0; transition:opacity .15s; white-space:nowrap; z-index:10; transform:translate(-50%,-130%); }
+  .theme-toggle{ display:flex; gap:6px; }
+  .theme-toggle button{
+    flex:1; padding:10px 4px; border-radius:10px; border:1.5px solid var(--line);
+    background:var(--input-bg); color:var(--ink); font-size:14.5px; font-weight:700;
+  }
+  .theme-toggle button.active{ background:var(--pine); border-color:var(--pine); color:#fff; }
 
-  .stat-grid{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:20px; }
-  .stat-box{ background:var(--navy); color:var(--paper); border-radius:10px; padding:16px 10px; text-align:center; }
-  .stat-box .num{ font-family:'Fraunces',serif; font-size:33px; font-weight:700; color:var(--gold); }
-  .stat-box .label{ font-size:15px; margin-top:4px; opacity:0.85; }
-  .year-row{ display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--line); }
-  .year-row .yr{ font-family:'Space Mono',monospace; font-weight:700; width:48px; color:var(--navy); }
-  .bar-track{ flex:1; height:10px; background:var(--paper-dark); border-radius:5px; overflow:hidden; }
-  .bar-fill{ height:100%; background:var(--brick); border-radius:5px; }
-  .year-row .cnt{ width:56px; text-align:right; font-size:16px; color:var(--sub); }
+  .version-row{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:6px 0; font-size:14.5px; border-bottom:1px solid var(--line);
+  }
+  .version-row:last-of-type{ border-bottom:none; }
+  .version-tag{
+    font-family:'Courier New',monospace; font-weight:700; color:var(--pine);
+    background:var(--chip-bg); border-radius:6px; padding:2px 8px; font-size:13px;
+  }
+  .version-tag.mismatch{ color:var(--rust); background:var(--warn-bg); }
+  .version-badge{
+    font-size:11px; font-weight:700; color:#C9D8CB; background:rgba(255,255,255,.14);
+    border-radius:6px; padding:1px 6px; margin-left:2px;
+  }
+  .field-url{ font-family:'Courier New',monospace; font-size:14px; word-break:break-all; }
 
-  .photo-grid{ display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
-  .photo-thumb{ position:relative; width:64px; height:64px; border-radius:8px; overflow:hidden; border:1.5px solid var(--line); background:var(--paper-dark); }
-  .photo-thumb img{ width:100%; height:100%; object-fit:cover; display:block; }
-  .photo-thumb .rm{ position:absolute; top:2px; right:2px; background:rgba(0,0,0,0.6); color:#fff; border:none; border-radius:50%; width:17px; height:17px; font-size:14px; cursor:pointer; }
+  .empty{ text-align:center; color:var(--sub); font-size:14.5px; padding:8px 0; }
 
-  .theme-toggle{ display:flex; gap:8px; }
-  .theme-toggle button{ flex:1; padding:9px 4px; border-radius:8px; border:1.5px solid var(--line); background:var(--card); color:var(--ink); font-size:16px; cursor:pointer; }
-  .theme-toggle button.active{ background:var(--navy); border-color:var(--navy); color:#fff; }
+  .zone-chip{
+    display:inline-flex; align-items:center; gap:6px; background:var(--chip-bg); color:var(--pine);
+    border:1px solid var(--line); border-radius:999px; padding:5px 6px 5px 12px;
+    font-size:14px; font-weight:700;
+  }
+  .zone-chip button{
+    border:none; background:rgba(0,0,0,.1); color:var(--pine); width:18px; height:18px;
+    border-radius:50%; font-size:13px; line-height:18px; padding:0; cursor:pointer;
+  }
 
-  .version-row{ display:flex; justify-content:space-between; align-items:center; font-size:18px; padding:6px 0; }
-  .version-tag{ font-family:'Space Mono',monospace; font-size:16px; padding:2px 8px; border-radius:10px; background:var(--paper-dark); color:var(--navy); }
-  .version-tag.mismatch{ background:#F6E2DC; color:var(--brick); }
-  html[data-theme="dark"] .version-tag.mismatch{ background:#3D2418; }
+  .edit-banner{
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    background:var(--warn-bg); color:var(--rust); border:1.5px solid var(--rust);
+    border-radius:12px; padding:10px 14px; margin-bottom:14px; font-size:15px; font-weight:700;
+  }
+  .edit-banner button{
+    border:1.5px solid var(--rust); background:transparent; color:var(--rust);
+    border-radius:8px; padding:5px 10px; font-size:13px; font-weight:700;
+  }
 
-  .navbar{ position:fixed; bottom:0; left:0; right:0; background:var(--paper); border-top:2px solid var(--ink); display:flex; max-width:520px; margin:0 auto; }
-  .navbar button{ flex:1; background:none; border:none; padding:10px 2px 8px; font-size:14.5px; font-weight:600; color:var(--sub); cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:3px; }
-  .navbar button.active{ color:var(--navy); }
-  .navbar button .ic{ font-size:23px; }
-
-  .toast{ position:fixed; bottom:86px; left:50%; transform:translateX(-50%) translateY(20px); background:var(--navy-deep); color:#fff; padding:10px 18px; border-radius:20px; font-size:18px; opacity:0; transition:all .25s ease; pointer-events:none; z-index:50; max-width:88%; text-align:center; }
-  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
-  .toast.error{ background:var(--brick); }
-  .loading{ text-align:center; padding:40px; color:var(--sub); font-size:18px; }
+  .entry-item{
+    border:1px solid var(--line); border-radius:12px; padding:10px 12px;
+    margin-bottom:8px; background:var(--input-bg);
+  }
+  .entry-item .entry-top{
+    display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;
+  }
+  .entry-item .entry-no{
+    font-family:'Courier New',monospace; font-weight:800; color:var(--pine); font-size:14.5px;
+  }
+  .entry-item .entry-date{ font-size:13.5px; color:var(--sub); }
+  .entry-item .entry-summary{
+    font-size:14.5px; font-weight:600; color:var(--ink); margin-bottom:8px; line-height:1.5;
+  }
+  .entry-item .entry-actions{ display:flex; gap:8px; }
+  .entry-item .entry-actions button{
+    flex:1; padding:7px; border-radius:8px; font-size:14px; font-weight:700;
+    border:1.5px solid var(--line); background:var(--card); color:var(--ink);
+  }
+  .entry-item .entry-actions button.edit{ border-color:var(--pine); color:var(--pine); }
+  .entry-item .entry-actions button.delete{ border-color:var(--danger); color:var(--danger); }
 </style>
 </head>
 <body>
-<div class="app">
-  <div class="topbar">
-    <div class="eyebrow">TRAVEL LOG · 여행하면서 그날그날 남기는 기록</div>
-    <div class="row">
-      <h1>여행이력</h1>
-      <span class="ver-badge" id="headerVersionBadge">v-</span>
-    </div>
-    <div class="status-line"><span class="status-dot off" id="statusDot"></span><span id="statusText">API 연결 확인 필요 · 설정 탭에서 주소 입력</span></div>
+
+<header class="app">
+  <div class="title-row">
+    <h1>🌳 조경수 실태조사<span class="status-dot off" id="statusDot"></span><span class="version-badge" id="headerVersionBadge">v-</span></h1>
   </div>
+  <div class="subtitle" id="statusText">API 연결 확인 필요 · 설정 탭에서 주소 입력</div>
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="tree">수목조사</button>
+    <button class="tab-btn" data-tab="bed">화단조사</button>
+    <button class="tab-btn" data-tab="stats">통계</button>
+    <button class="tab-btn" data-tab="settings">설정</button>
+  </nav>
+</header>
 
-  <!-- 입력 -->
-  <div class="view active" id="tab-add">
-    <div class="trip-select-row">
-      <select id="trip-select"><option value="">여행을 선택하세요</option></select>
-      <button class="btn btn-ghost btn-small" id="btn-new-trip">+ 새 여행</button>
+<main>
+
+  <!-- ===================== 수목조사 ===================== -->
+  <section id="tab-tree">
+    <div class="edit-banner" id="t_editBanner" style="display:none;">
+      <span>✏️ No.<b id="t_editNo"></b> 수정 중</span>
+      <div style="display:flex;gap:6px;">
+        <button type="button" onclick="deleteCurrentEntry('tree')">삭제</button>
+        <button type="button" onclick="cancelEdit('tree')">취소</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-label">기본 정보</div>
+      <div class="row2">
+        <div class="field">
+          <label>점검일</label>
+          <input type="date" id="t_점검일">
+        </div>
+        <div class="field">
+          <label>동/구역 <span class="req">*</span></label>
+          <select id="t_동구역" onchange="handleZoneChange('t')"></select>
+          <input type="text" id="t_동구역직접입력" placeholder="동/구역명을 입력 후 Enter" style="display:none;margin-top:8px;">
+        </div>
+      </div>
+      <div class="field">
+        <label>상세 위치</label>
+        <input type="text" id="t_상세위치" placeholder="예: 놀이터 옆 화단 3번목">
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>수종 <span class="req">*</span></label>
+          <select id="t_수종" onchange="toggleSpeciesCustom()">
+            <optgroup label="침엽수">
+              <option>소나무</option><option>반송</option><option>백송</option>
+              <option>스트로브잣나무</option><option>잣나무</option><option>전나무</option>
+              <option>구상나무</option><option>주목</option><option>측백나무</option>
+              <option>향나무</option><option>편백</option><option>메타세쿼이아</option>
+              <option>낙우송</option>
+            </optgroup>
+            <optgroup label="낙엽 활엽교목">
+              <option>느티나무</option><option>왕벚나무</option><option>벚나무</option>
+              <option>은행나무</option><option>단풍나무</option><option>청단풍</option>
+              <option>홍단풍</option><option>이팝나무</option><option>회화나무</option>
+              <option>느릅나무</option><option>버즘나무(플라타너스)</option><option>자작나무</option>
+              <option>튤립나무(백합나무)</option><option>산수유</option><option>목련</option>
+              <option>자목련</option><option>배롱나무</option><option>마가목</option>
+              <option>산딸나무</option><option>계수나무</option><option>오동나무</option>
+              <option>참나무류(상수리나무)</option><option>굴참나무</option>
+            </optgroup>
+            <optgroup label="유실수">
+              <option>매실나무</option><option>살구나무</option><option>감나무</option>
+              <option>대추나무</option><option>모과나무</option>
+            </optgroup>
+            <optgroup label="관목·화목류">
+              <option>철쭉</option><option>영산홍</option><option>진달래</option>
+              <option>회양목</option><option>사철나무</option><option>쥐똥나무</option>
+              <option>남천</option><option>화살나무</option><option>조팝나무</option>
+              <option>수수꽃다리(라일락)</option><option>무궁화</option><option>동백나무</option>
+              <option>목수국</option><option>치자나무</option>
+            </optgroup>
+            <optgroup label="덩굴류·기타">
+              <option>능소화</option><option>등나무</option><option>담쟁이덩굴</option>
+              <option>대나무</option><option>줄사철나무</option>
+            </optgroup>
+            <optgroup label="목록에 없음">
+              <option value="기타(직접입력)">기타 (직접입력)</option>
+            </optgroup>
+          </select>
+          <input type="text" id="t_수종직접입력" placeholder="수종명을 입력해주세요" style="display:none;margin-top:8px;">
+        </div>
+        <div class="field">
+          <label>수량</label>
+          <input type="number" id="t_수량" min="1" value="1">
+        </div>
+      </div>
     </div>
 
-    <div class="card" id="trip-form" style="display:none;">
-      <div class="section-label">새 여행 만들기</div>
-      <div class="field"><label>여행 제목</label><input type="text" id="t-title" placeholder="예: 홍도·흑산도 4박 5일"></div>
-      <div class="field row2">
-        <div><label>시작일</label><input type="date" id="t-start"></div>
-        <div><label>종료일</label><input type="date" id="t-end"></div>
+    <div class="card">
+      <div class="section-label">생육 상태</div>
+      <div class="field">
+        <label>생육상태 <span class="req">*</span></label>
+        <div class="chip-select">
+          <select id="t_생육상태" onchange="updateStateChip('t_생육상태','t_생육상태chip')">
+            <option value="정상">정상</option>
+            <option value="주의">주의</option>
+            <option value="생육불량">생육불량</option>
+            <option value="고사위험">고사위험</option>
+            <option value="고사">고사</option>
+          </select>
+          <span class="chip state-정상" id="t_생육상태chip">정상</span>
+        </div>
       </div>
-      <div class="field"><label>동행자</label><input type="text" id="t-companions" placeholder="예: 나 홀로, 가족"></div>
-      <div class="field row2">
-        <div><label>전체 예산</label><input type="number" id="t-budget" placeholder="원"></div>
-        <div><label>만족도</label>
-          <select id="t-rating">
-            <option value="5">★★★★★</option><option value="4">★★★★</option>
-            <option value="3">★★★</option><option value="2">★★</option><option value="1">★</option>
+      <div class="field">
+        <label>잎·가지 상태</label>
+        <select id="t_잎가지상태">
+          <option>정상</option><option>잎 처짐</option><option>황변</option>
+          <option>잎마름</option><option>조기낙엽</option><option>가지마름</option><option>복합증상</option>
+        </select>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>토양수분</label>
+          <select id="t_토양수분">
+            <option>과습</option><option selected>적정</option><option>건조</option>
+            <option>매우 건조</option><option>확인 필요</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>토양상태</label>
+          <select id="t_토양상태">
+            <option>양호</option><option>단단함/다짐</option><option>배수불량</option>
+            <option>표토노출</option><option>유기물부족</option><option>확인 필요</option>
           </select>
         </div>
       </div>
-      <div class="field"><label>여행 메모 (선택)</label><textarea id="t-memo" placeholder="여행 방향, 준비물 등"></textarea></div>
-      <button class="btn btn-primary" id="btn-save-trip">여행 만들기</button>
+      <div class="row2">
+        <div class="field">
+          <label>주변환경</label>
+          <select id="t_주변환경">
+            <option>양호</option><option>맨땅</option><option>낙엽층 있음</option>
+            <option>낙엽 거의 없음</option><option>멀칭 있음</option><option>지피 생육불량</option><option>관수시설 없음</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>고사위험</label>
+          <select id="t_고사위험">
+            <option>낮음</option><option>중간</option><option>높음</option><option>긴급</option><option>고사</option>
+          </select>
+        </div>
+      </div>
     </div>
 
-    <div id="trip-banner" style="display:none;"></div>
-
-    <div class="card" id="leg-form" style="display:none;">
-      <div class="section-label">오늘 기록 추가</div>
-      <div class="field"><label>날짜</label><input type="date" id="l-date"></div>
-      <div class="field" style="display:flex; align-items:center; gap:8px;">
-        <input type="checkbox" id="l-stay-only" style="width:auto; margin:0;">
-        <label for="l-stay-only" style="margin:0; cursor:pointer;">오늘은 이동 없이 한 곳에 머물러요</label>
-      </div>
-      <div class="field row2" id="from-to-row">
-        <div id="from-field-wrap"><label>출발지</label><input type="text" id="l-from" placeholder="예: 목포"></div>
-        <div><label id="to-field-label">도착지</label><input type="text" id="l-to" placeholder="예: 홍도"></div>
-      </div>
-      <div class="field row2">
-        <div><label>출발시간 (선택)</label><input type="time" id="l-depart-time"></div>
-        <div><label>도착시간 (선택)</label><input type="time" id="l-arrive-time"></div>
-      </div>
-      <div class="field"><label>교통수단 (여러 개 선택 가능)</label><div class="chip-group" id="chip-transport"></div></div>
-      <div class="field"><label>숙소 유형 (여러 개 선택 가능)</label><div class="chip-group" id="chip-lodging"></div></div>
-      <div class="field"><label>숙소명 (선택)</label><input type="text" id="l-lodging-name" placeholder="예: 대한모텔"></div>
-      <div class="field"><label>음식 (여러 개 선택 가능)</label><div class="chip-group" id="chip-food"></div></div>
-      <div class="field"><label>먹은 음식/맛집명 (선택)</label><input type="text" id="l-food-name" placeholder="예: 홍어삼합, ○○식당"></div>
-      <div class="field"><label>오늘 지출</label><input type="number" id="l-spend" placeholder="원"></div>
-      <div class="field"><label>메모</label><textarea id="l-memo" placeholder="오늘 있었던 일, 볼거리, 팁 등을 적어보세요"></textarea></div>
+    <div class="card">
+      <div class="section-label">관찰 및 조치</div>
       <div class="field">
-        <label>사진 (촬영 또는 선택, 여러 장 가능)</label>
-        <button type="button" class="btn btn-photo" id="btn-add-photo">📷 사진 촬영 / 첨부하기</button>
-        <input type="file" id="l-photo-input" accept="image/*" capture="environment" multiple style="display:none;">
-        <div class="photo-grid" id="photo-preview"></div>
+        <label>관찰내용</label>
+        <textarea id="t_관찰내용" placeholder="눈으로 확인한 내용을 자유롭게 적어주세요"></textarea>
       </div>
-      <input type="hidden" id="l-id" value="">
-      <button class="btn btn-primary" id="btn-save-leg">오늘 기록 저장</button>
+      <div class="field">
+        <label>추정원인 (선택)</label>
+        <select id="t_추정원인">
+          <option value="">선택 안함</option>
+          <option>수분부족 의심</option><option>과습/배수 의심</option><option>토양다짐 의심</option>
+          <option>병충해 의심</option><option>식재/활착 의심</option><option>전정/손상 의심</option><option>원인불명</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>우선조치</label>
+        <select id="t_우선조치">
+          <option>관찰</option><option>관수 검토</option><option>집중관수 검토</option>
+          <option>토양점검</option><option>배수점검</option><option>병충해점검</option>
+          <option>전문가진단</option><option>고사확인</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>재점검일</label>
+        <input type="date" id="t_재점검일">
+      </div>
+      <div class="field">
+        <label>비고</label>
+        <textarea id="t_비고"></textarea>
+      </div>
     </div>
 
-    <div id="leg-timeline"></div>
-  </div>
-
-  <!-- 목록 -->
-  <div class="view" id="tab-list">
-    <div class="filters">
-      <select id="filter-year"><option value="">전체 연도</option></select>
-      <input type="text" id="filter-search" placeholder="여행 제목, 장소 검색">
+    <div class="card">
+      <div class="section-label">사진 첨부</div>
+      <div class="photo-box">
+        <div class="photo-actions">
+          <button type="button" class="btn-sm" onclick="document.getElementById('t_cam').click()">📷 촬영하기</button>
+          <button type="button" class="btn-sm" onclick="document.getElementById('t_gal').click()">🖼 사진 선택</button>
+        </div>
+        <input type="file" id="t_cam" accept="image/*" capture="environment" style="display:none">
+        <input type="file" id="t_gal" accept="image/*" multiple style="display:none">
+        <div class="thumbs" id="t_thumbs"></div>
+        <div class="hint" id="t_photoHint">사진을 추가하면 사진번호가 자동으로 부여되고 사진관리 시트에도 기록됩니다.</div>
+      </div>
     </div>
-    <div id="list-container"><div class="loading">불러오는 중…</div></div>
-  </div>
 
-  <!-- 지도 -->
-  <div class="view" id="tab-map">
-    <h3 style="margin-bottom:10px;">방문 지도</h3>
-    <div class="map-wrap"><div id="map-svg-holder"></div><div class="pin-tooltip" id="pin-tooltip"></div></div>
-    <div class="map-legend" id="map-legend">여행 중 기록한 지점을 표시합니다</div>
-  </div>
+    <div class="card">
+      <div class="section-label">최근 입력 내역</div>
+      <div class="entry-list" id="t_entryList"><div class="empty">불러오는 중...</div></div>
+      <button type="button" class="btn-sm" style="width:100%;margin-top:4px;" onclick="loadEntries('tree')">🔄 새로고침</button>
+    </div>
+  </section>
 
-  <!-- 통계 -->
-  <div class="view" id="tab-stats">
-    <h3 style="margin-bottom:14px;">여행 통계</h3>
-    <div class="stat-grid" id="stat-grid"><div class="loading">불러오는 중…</div></div>
-    <div id="year-breakdown"></div>
-  </div>
+  <!-- ===================== 화단조사 ===================== -->
+  <section id="tab-bed" style="display:none;">
+    <div class="edit-banner" id="b_editBanner" style="display:none;">
+      <span>✏️ No.<b id="b_editNo"></b> 수정 중</span>
+      <div style="display:flex;gap:6px;">
+        <button type="button" onclick="deleteCurrentEntry('bed')">삭제</button>
+        <button type="button" onclick="cancelEdit('bed')">취소</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-label">기본 정보</div>
+      <div class="row2">
+        <div class="field">
+          <label>점검일</label>
+          <input type="date" id="b_점검일">
+        </div>
+        <div class="field">
+          <label>동/구역 <span class="req">*</span></label>
+          <select id="b_동구역" onchange="handleZoneChange('b')"></select>
+          <input type="text" id="b_동구역직접입력" placeholder="동/구역명을 입력 후 Enter" style="display:none;margin-top:8px;">
+        </div>
+      </div>
+      <div class="field">
+        <label>화단/구역 위치 <span class="req">*</span></label>
+        <input type="text" id="b_위치" placeholder="예: 정문 앞 원형화단">
+      </div>
+    </div>
 
-  <!-- 설정 -->
-  <div class="view" id="tab-settings">
+    <div class="card">
+      <div class="section-label">토양 · 표층 상태</div>
+      <div class="row2">
+        <div class="field">
+          <label>토양수분</label>
+          <select id="b_토양수분">
+            <option>과습</option><option selected>적정</option><option>건조</option>
+            <option>매우 건조</option><option>확인 필요</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>토양다짐</label>
+          <select id="b_토양다짐">
+            <option>양호</option><option>약간 단단함</option><option>매우 단단함</option><option>확인 필요</option>
+          </select>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>표토상태</label>
+          <select id="b_표토상태">
+            <option>유기물층 있음</option><option>일부 노출</option><option>맨흙 노출</option><option>기타</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>낙엽상태</label>
+          <select id="b_낙엽상태">
+            <option>적정</option><option>많음</option><option>거의 없음</option><option>전량 제거 상태</option>
+          </select>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>멀칭</label>
+          <select id="b_멀칭">
+            <option>있음</option><option>없음</option><option>일부만 있음</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>배수상태</label>
+          <select id="b_배수상태">
+            <option>양호</option><option>불량 의심</option><option>과습</option><option>확인 필요</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-label">생육 · 시설</div>
+      <div class="field">
+        <label>잔디·지피 생육</label>
+        <select id="b_잔디생육">
+          <option>양호</option><option>보통</option><option>불량</option><option>거의 생육 안 됨</option>
+        </select>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>관수시설</label>
+          <select id="b_관수시설">
+            <option>있음</option><option>없음</option><option>일부 구역만 있음</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>수목 전반상태</label>
+          <div class="chip-select">
+            <select id="b_수목전반상태" onchange="updateStateChip('b_수목전반상태','b_수목전반상태chip')">
+              <option value="양호">양호</option><option value="일부 불량">일부 불량</option>
+              <option value="다수 불량">다수 불량</option><option value="고사목 있음">고사목 있음</option>
+            </select>
+            <span class="chip state-정상" id="b_수목전반상태chip">양호</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-label">문제 및 개선</div>
+      <div class="field">
+        <label>주요 문제</label>
+        <textarea id="b_주요문제" placeholder="구역에서 발견된 문제를 적어주세요"></textarea>
+      </div>
+      <div class="field">
+        <label>우선 개선사항</label>
+        <select id="b_우선개선사항">
+          <option>모니터링</option><option>관수개선</option><option>멀칭보완</option>
+          <option>잡초제거</option><option>배수개선</option><option>시설수리</option><option>재식재검토</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>비고</label>
+        <textarea id="b_비고"></textarea>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-label">사진 첨부</div>
+      <div class="photo-box">
+        <div class="photo-actions">
+          <button type="button" class="btn-sm" onclick="document.getElementById('b_cam').click()">📷 촬영하기</button>
+          <button type="button" class="btn-sm" onclick="document.getElementById('b_gal').click()">🖼 사진 선택</button>
+        </div>
+        <input type="file" id="b_cam" accept="image/*" capture="environment" style="display:none">
+        <input type="file" id="b_gal" accept="image/*" multiple style="display:none">
+        <div class="thumbs" id="b_thumbs"></div>
+        <div class="hint" id="b_photoHint">사진을 추가하면 사진번호가 자동으로 부여되고 사진관리 시트에도 기록됩니다.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-label">최근 입력 내역</div>
+      <div class="entry-list" id="b_entryList"><div class="empty">불러오는 중...</div></div>
+      <button type="button" class="btn-sm" style="width:100%;margin-top:4px;" onclick="loadEntries('bed')">🔄 새로고침</button>
+    </div>
+  </section>
+
+  <!-- ===================== 설정 ===================== -->
+  <section id="tab-stats" style="display:none;">
+    <div class="card">
+      <div class="section-label">생육상태 현황 (수목조사)</div>
+      <div class="stats-grid" id="statsGrowthGrid">
+        <div class="stats-cell"><div class="n">-</div><div class="l">불러오는 중...</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-label">핵심지표</div>
+      <div class="stats-list" id="statsIndicatorList"></div>
+      <div class="stats-updated" id="statsUpdatedAt"></div>
+    </div>
+    <button type="button" class="btn-sm" style="width:100%;" onclick="loadStats()">🔄 통계 새로고침</button>
+    <div class="settings-note" style="margin-top:10px;">
+      통계는 조사 내용을 저장·수정·삭제할 때마다 자동으로 갱신되며, 구글시트의 <b>자동통계</b> 탭에도 실시간으로 반영됩니다.
+    </div>
+  </section>
+
+  <section id="tab-settings" style="display:none;">
+    <div class="card">
+      <div class="section-label">동/구역 관리</div>
+      <div class="field">
+        <label>새 동/구역 등록</label>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="newZoneInput" placeholder="예: 101동 화단" style="flex:1;">
+          <button type="button" class="btn-sm" style="flex:0 0 68px;" onclick="addZoneFromSettings()">등록</button>
+        </div>
+      </div>
+      <div id="zoneManageList" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:2px;"></div>
+      <div class="settings-note" style="margin-top:10px;">
+        동/구역 목록은 <b>구글시트("동구역목록" 탭)</b>에 저장되어, 같은 API 주소를 쓰는 모든 사람/기기에서 함께 사용됩니다.<br>
+        조사 화면에서 "+ 새 동/구역 등록"을 선택해 즉시 추가할 수도 있습니다.
+      </div>
+    </div>
     <div class="card">
       <div class="section-label">화면 테마</div>
       <div class="theme-toggle" id="themeToggle">
@@ -274,668 +651,777 @@
         <button type="button" data-theme-choice="dark">🌙 다크</button>
         <button type="button" data-theme-choice="system">📱 시스템</button>
       </div>
-      <div class="hint" style="margin-top:8px;">선택한 테마는 이 기기에 저장되어 다음 접속 시에도 유지됩니다.</div>
+      <div class="settings-note" style="margin-top:8px;">선택한 테마는 이 기기에 저장되어 다음 접속 시에도 유지됩니다.</div>
     </div>
     <div class="card">
       <div class="section-label">Google Apps Script 주소</div>
-      <div class="field"><label>웹앱 URL</label><input type="text" id="apiUrl" placeholder="https://script.google.com/macros/s/xxxx/exec"></div>
+      <div class="field">
+        <label>웹앱 URL</label>
+        <input type="text" id="apiUrl" class="field-url" placeholder="https://script.google.com/macros/s/xxxx/exec">
+      </div>
       <button type="button" class="btn-sm" style="width:100%;margin-bottom:8px;" onclick="saveApiUrl()">저장 및 연결 확인</button>
-      <div class="hint">설치가이드.md의 안내대로 Apps Script를 배포한 뒤 발급받은 URL을 여기에 붙여넣고 저장하세요. 저장한 주소는 이 스마트폰(브라우저)에만 저장됩니다.</div>
-    </div>
-    <div class="card">
-      <div class="section-label">데이터 구조 점검/복구</div>
-      <div class="hint" style="margin-bottom:10px;">앱 업데이트로 새 항목(음식, 출발/도착 시간 등)이 추가되면서, 예전에 저장한 기록의 값이 엉뚱한 칸에 보일 수 있어요. 아래 버튼을 누르면 구글시트에 저장된 예전 기록을 실제 항목 이름에 맞춰 자동으로 다시 정렬해줍니다. 이미 정상이면 아무 것도 바뀌지 않으니 안심하고 눌러도 돼요.</div>
-      <button type="button" class="btn-sm" style="width:100%;" onclick="runMigration()" id="btn-migrate">예전 기록 정렬 점검하기</button>
-      <div class="hint" id="migrateResult" style="margin-top:8px;"></div>
+      <div class="settings-note">
+        설치가이드.md의 안내대로 Apps Script를 배포한 뒤 발급받은 URL을 여기에 붙여넣고 저장하세요.<br>
+        저장한 주소는 이 스마트폰(브라우저)에만 저장되며, 다음에 접속할 때도 자동으로 사용됩니다.
+      </div>
     </div>
     <div class="card">
       <div class="section-label">앱 정보 및 버전</div>
-      <div class="version-row"><span>앱(프론트엔드)</span><span class="version-tag" id="feVersionTag">v-</span></div>
-      <div class="version-row"><span>백엔드(Apps Script)</span><span class="version-tag" id="beVersionTag">확인 중...</span></div>
-      <div class="hint" id="versionNote" style="margin-top:6px;"></div>
-      <div class="hint" style="margin-top:10px;">
-        • 입력 즉시 연결된 구글 시트에 저장됩니다.<br>
-        • 사진은 구글 드라이브 폴더(여행이력_사진)에 저장됩니다.<br>
-        • 오프라인 상태에서는 저장이 실패하니, Wi-Fi/데이터가 연결된 곳에서 저장해주세요.
+      <div class="version-row">
+        <span>앱(프론트엔드)</span><span class="version-tag" id="feVersionTag">v-</span>
+      </div>
+      <div class="version-row">
+        <span>백엔드(Apps Script)</span><span class="version-tag" id="beVersionTag">확인 중...</span>
+      </div>
+      <div class="settings-note" id="versionNote" style="margin-top:6px;"></div>
+      <div class="settings-note" style="margin-top:10px;">
+        • 입력 즉시 연결된 구글 시트에 한 행씩 저장됩니다.<br>
+        • 사진은 구글 드라이브 폴더(조경수조사_사진)에 저장되고, 링크가 사진관리 시트에 자동 기록됩니다.<br>
+        • 오프라인 상태에서는 저장이 실패하니, Wi-Fi/데이터가 연결된 곳에서 저장 버튼을 눌러주세요.
       </div>
     </div>
-  </div>
-</div>
+  </section>
 
-<div class="navbar">
-  <button data-view="add" class="active" onclick="switchTab('add')"><span class="ic">✎</span>입력</button>
-  <button data-view="list" onclick="switchTab('list')"><span class="ic">☰</span>목록</button>
-  <button data-view="map" onclick="switchTab('map')"><span class="ic">◎</span>지도</button>
-  <button data-view="stats" onclick="switchTab('stats')"><span class="ic">▤</span>통계</button>
-  <button data-view="settings" onclick="switchTab('settings')"><span class="ic">⚙</span>설정</button>
+</main>
+
+<div class="submit-bar" id="submitBar">
+  <div class="inner">
+    <button class="submit" id="submitBtn" onclick="submitForm()">이 조사 내용 저장하기</button>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
-  const APP_VERSION = '2.4.1';
-  const STORAGE_KEY_URL = 'travellog_api_url';
-  const THEME_KEY = 'travellog_theme';
-  const DEFAULT_API_URL = ''; // 배포 후 여기에 기본 URL을 넣어두면 매번 설정할 필요가 없습니다.
+  // ---------- 상태 ----------
+  const state = { tree: { photos: [] }, bed: { photos: [] } };
+  let currentTab = 'tree';
+  const editState = { tree: null, bed: null }; // {no: X} 편집 중일 때
 
-  let TRIPS = [];
-  let LEGS = [];
-  let SELECTED_TRIP_ID = '';
-  let PENDING_PHOTOS = [];
-  let EXISTING_PHOTO_URLS = [];
+  const STORAGE_KEY_URL = 'jogyeongsu_api_url';
+  const STORAGE_KEY_ZONE = 'jogyeongsu_last_zone';
+  const ZONE_CACHE_KEY = 'jogyeongsu_zone_cache'; // 오프라인 대비 캐시(서버가 원본)
+  const THEME_KEY = 'jogyeongsu_theme';
+  const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbxjsMvS1Zt64iNPxjHPesy167SB15x-W3iFcCCv1gZEg-IN7GvljZ4rbyHM5KUipXC7/exec'; // 배포 후 이 값에 기본 URL을 넣어두면 매번 설정할 필요가 없습니다.
 
-  const TRANSPORT_OPTIONS = ['열차','여객선','자동차','버스','항공','도보','기타'];
-  const LODGING_OPTIONS = ['호텔','모텔/여관','게스트하우스','펜션','캠핑/글램핑','가족/지인 집','기타'];
-  const FOOD_OPTIONS = ['해산물/생선회','한식','분식','카페·디저트','특산물','길거리음식','기타'];
+  const APP_VERSION = '1.8.0';
+
+  function todayStr(){
+    const d = new Date();
+    const pad = n => String(n).padStart(2,'0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  }
+
+  // 구글시트에서 날짜 컬럼은 "2026-08-23T00:00:00.000Z" 같은 형태로 내려오므로,
+  // 화면 표시용/입력창(<input type="date">)용으로 각각 변환합니다.
+  function pad2(n){ return String(n).padStart(2,'0'); }
+  function toDateObj(v){
+    if (!v) return null;
+    const d = (v instanceof Date) ? v : new Date(v);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  // <input type="date">에는 "YYYY-MM-DD"만 들어가야 하므로 날짜 부분만 추출 (UTC 기준: 시트 저장 시각과 동일하게 유지)
+  function toDateInputValue(v){
+    const d = toDateObj(v);
+    if (!d) return typeof v === 'string' ? v.slice(0, 10) : '';
+    return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth()+1)}-${pad2(d.getUTCDate())}`;
+  }
+  // 목록 화면 표시용: "YYYY-MM-DDTHH:mm:ss" (밀리초·Z 제거)
+  function formatDateTime(v){
+    const d = toDateObj(v);
+    if (!d) return v || '';
+    return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth()+1)}-${pad2(d.getUTCDate())}`
+      + `T${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}:${pad2(d.getUTCSeconds())}`;
+  }
 
   function apiUrlValue(){ return localStorage.getItem(STORAGE_KEY_URL) || DEFAULT_API_URL; }
-  function escapeHtml(s){ if(!s) return ''; return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-  function buildRouteText(l){
-    const left = [l.departTime, l.fromPlace].filter(Boolean).join(' ');
-    const right = [l.arriveTime, l.toPlace].filter(Boolean).join(' ');
-    if (!left && right) return right + ' 머묾';
-    return [left, right].filter(Boolean).join(' → ') || '기록';
-  }
-  function buildTagsText(l){
-    return [l.transport, l.lodgingType, l.lodgingName, l.foodType, l.foodName].filter(Boolean).join(' · ');
-  }
-  function formatDateWithWeekday(dateStr){
-    if (!dateStr) return '';
-    const d = new Date(dateStr + 'T00:00:00');
-    if (isNaN(d.getTime())) return dateStr;
-    const weekdays = ['일','월','화','수','목','금','토'];
-    return (d.getMonth()+1) + '월 ' + d.getDate() + '일(' + weekdays[d.getDay()] + ')';
-  }
-  function buildDaySummaryCard(l, dayNum){
-    const route = buildRouteText(l);
-    const timeInfo = [l.departTime, l.arriveTime].filter(Boolean).join(' ~ ');
-    const lodging = [l.lodgingType, l.lodgingName].filter(Boolean).join(' · ');
-    const food = [l.foodType, l.foodName].filter(Boolean).join(' · ');
-    const rows = [
-      ['이동', route],
-      ['시간', timeInfo],
-      ['교통수단', l.transport],
-      ['숙소', lodging],
-      ['음식', food],
-      ['지출', l.actualSpend ? Number(l.actualSpend).toLocaleString()+'원' : ''],
-      ['메모', l.memo]
-    ].filter(r => r[1]);
 
-    return '<div class="day-block">' +
-      '<div class="day-header">' + (dayNum ? 'DAY '+dayNum+' · ' : '') + escapeHtml(formatDateWithWeekday(l.date)) + '</div>' +
-      (rows.length ? '<table class="day-table">' + rows.map(r =>
-        '<tr><th>'+escapeHtml(r[0])+'</th><td>'+escapeHtml(r[1])+'</td></tr>'
-      ).join('') + '</table>' : '<div class="hint" style="padding:8px 0;">내용 없음</div>') +
-    '</div>';
-  }
-  function showToast(msg, isError){
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.classList.toggle('error', !!isError);
-    t.classList.add('show');
-    setTimeout(()=>t.classList.remove('show'), isError ? 5000 : 2600);
-  }
-
-  // ---------- PWA: 서비스워커 등록 ----------
+  // ---------- PWA: 서비스워커 등록 (홈 화면 설치 지원) ----------
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js').catch(() => {});
+      navigator.serviceWorker.register('sw.js').catch(() => {
+        // file:// 등 서비스워커를 지원하지 않는 환경에서는 조용히 무시 (앱 사용에는 지장 없음)
+      });
     });
   }
 
+  window.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('t_점검일').value = todayStr();
+    document.getElementById('b_점검일').value = todayStr();
+
+    initTheme();
+
+    document.getElementById('feVersionTag').textContent = 'v' + APP_VERSION;
+
+    const savedUrl = apiUrlValue();
+    document.getElementById('apiUrl').value = savedUrl;
+    const savedZone = localStorage.getItem(STORAGE_KEY_ZONE) || '';
+
+    // 서버 응답 전까지는 캐시된 목록으로 우선 렌더링
+    renderZoneSelects(savedZone);
+    renderZoneManageList();
+
+    refreshStatus();
+    syncZonesFromServer(savedZone);
+    loadEntries('tree');
+
+    document.querySelectorAll('.tab-btn').forEach(btn=>{
+      btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    });
+
+    document.getElementById('t_cam').addEventListener('change', e => handleFiles('tree', e.target.files));
+    document.getElementById('t_gal').addEventListener('change', e => handleFiles('tree', e.target.files));
+    document.getElementById('b_cam').addEventListener('change', e => handleFiles('bed', e.target.files));
+    document.getElementById('b_gal').addEventListener('change', e => handleFiles('bed', e.target.files));
+
+    document.getElementById('t_동구역직접입력').addEventListener('keydown', e => {
+      if (e.key === 'Enter'){ e.preventDefault(); commitNewZone('t'); }
+    });
+    document.getElementById('t_동구역직접입력').addEventListener('blur', () => commitNewZone('t'));
+    document.getElementById('b_동구역직접입력').addEventListener('keydown', e => {
+      if (e.key === 'Enter'){ e.preventDefault(); commitNewZone('b'); }
+    });
+    document.getElementById('b_동구역직접입력').addEventListener('blur', () => commitNewZone('b'));
+    document.getElementById('newZoneInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter'){ e.preventDefault(); addZoneFromSettings(); }
+    });
+
+    document.querySelectorAll('#themeToggle button').forEach(btn=>{
+      btn.addEventListener('click', () => applyTheme(btn.dataset.themeChoice));
+    });
+  });
+
   // ---------- 테마 ----------
-  function applyTheme(mode, skipSave){
-    const root = document.documentElement;
-    if (mode === 'system') {
-      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      root.setAttribute('data-theme', dark ? 'dark' : 'light');
-    } else {
-      root.setAttribute('data-theme', mode);
-    }
-    document.querySelectorAll('#themeToggle button').forEach(b => b.classList.toggle('active', b.dataset.themeChoice === mode));
-    if (!skipSave) localStorage.setItem(THEME_KEY, mode);
-  }
   function initTheme(){
     const saved = localStorage.getItem(THEME_KEY) || 'system';
     applyTheme(saved, true);
-    document.querySelectorAll('#themeToggle button').forEach(b => b.classList.toggle('active', b.dataset.themeChoice === saved));
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-      if ((localStorage.getItem(THEME_KEY) || 'system') === 'system') applyTheme('system', true);
-    });
-  }
-  document.getElementById('themeToggle').addEventListener('click', function(e){
-    const btn = e.target.closest('button[data-theme-choice]');
-    if (btn) applyTheme(btn.dataset.themeChoice);
-  });
-
-  // ---------- 탭 전환 ----------
-  function switchTab(name){
-    document.querySelectorAll('.navbar button').forEach(b => b.classList.toggle('active', b.dataset.view === name));
-    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-    document.getElementById('tab-' + name).classList.add('active');
-    if (name === 'list') renderList();
-    if (name === 'map') renderMap();
-    if (name === 'stats') renderStats();
-  }
-
-  // ---------- fetch 유틸 ----------
-  async function apiGet(action){
-    const url = apiUrlValue();
-    if (!url) throw new Error('설정 탭에서 API 주소를 먼저 입력해주세요.');
-    const sep = url.indexOf('?') > -1 ? '&' : '?';
-    const res = await fetch(url + sep + 'action=' + action, { method: 'GET' });
-    const json = await res.json();
-    if (!json.ok) throw new Error(json.error || '조회 실패');
-    return json;
-  }
-  async function fetchWithRetry_(url, options){
-    try{
-      return await fetch(url, options);
-    }catch(networkErr){
-      // 요청이 서버에 닿기도 전에 실패한 경우(와이파이 순간 끊김 등)에 한해 0.9초 후 한 번만 재시도
-      await new Promise(r => setTimeout(r, 900));
-      try{
-        return await fetch(url, options);
-      }catch(secondErr){
-        throw new Error('네트워크 연결을 확인해주세요 (' + secondErr.message + ')');
-      }
+    if (window.matchMedia){
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+        if ((localStorage.getItem(THEME_KEY) || 'system') === 'system') applyTheme('system', true);
+      });
     }
   }
-  async function apiPost(type, data, photos){
-    const url = apiUrlValue();
-    if (!url) throw new Error('설정 탭에서 API 주소를 먼저 입력해주세요.');
-    const res = await fetchWithRetry_(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ type: type, data: data || {}, photos: photos || [] })
+
+  function applyTheme(mode, skipSave){
+    if (!skipSave) localStorage.setItem(THEME_KEY, mode);
+    let effective = mode;
+    if (mode === 'system'){
+      effective = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+    }
+    document.documentElement.setAttribute('data-theme', effective);
+    document.querySelectorAll('#themeToggle button').forEach(btn=>{
+      btn.classList.toggle('active', btn.dataset.themeChoice === mode);
     });
-    const json = await res.json();
-    if (!json.ok) throw new Error(json.error || '요청 실패');
-    return json;
   }
 
-  // ---------- 연결 상태 / 버전 ----------
+  // ---------- 동/구역 관리 (구글시트에 저장, 로컬은 오프라인 캐시용) ----------
+  function loadZoneCache(){
+    try{ return JSON.parse(localStorage.getItem(ZONE_CACHE_KEY)) || []; }
+    catch(e){ return []; }
+  }
+  function saveZoneCache(list){ localStorage.setItem(ZONE_CACHE_KEY, JSON.stringify(list)); }
+
+  async function syncZonesFromServer(selectedZone){
+    const url = apiUrlValue();
+    if (!url) return;
+    try{
+      const sep = url.includes('?') ? '&' : '?';
+      const res = await fetch(url + sep + 'action=zones', { method: 'GET' });
+      const json = await res.json();
+      if (json.ok){
+        saveZoneCache(json.zones || []);
+        renderZoneSelects(selectedZone);
+        renderZoneManageList();
+        applyBackendVersion(json.version);
+      }
+    }catch(err){
+      // 오프라인일 수 있음 - 캐시된 목록을 그대로 사용
+    }
+  }
+
+  function renderZoneSelects(selectedZone){
+    const zones = loadZoneCache();
+    ['t_동구역','b_동구역'].forEach(id=>{
+      const sel = document.getElementById(id);
+      const prevValue = selectedZone !== undefined ? selectedZone : sel.value;
+      sel.innerHTML = '';
+      if (zones.length === 0){
+        const opt = document.createElement('option');
+        opt.value = ''; opt.textContent = '등록된 구역이 없습니다';
+        sel.appendChild(opt);
+      } else {
+        zones.forEach(z=>{
+          const opt = document.createElement('option');
+          opt.value = z; opt.textContent = z;
+          sel.appendChild(opt);
+        });
+      }
+      const newOpt = document.createElement('option');
+      newOpt.value = '__new__';
+      newOpt.textContent = '+ 새 동/구역 등록';
+      sel.appendChild(newOpt);
+      if (zones.includes(prevValue)) sel.value = prevValue;
+    });
+  }
+
+  function handleZoneChange(prefix){
+    const sel = document.getElementById(prefix + '_동구역');
+    const custom = document.getElementById(prefix + '_동구역직접입력');
+    if (sel.value === '__new__'){
+      custom.style.display = '';
+      custom.value = '';
+      custom.focus();
+    } else {
+      custom.style.display = 'none';
+    }
+  }
+
+  async function commitNewZone(prefix){
+    const custom = document.getElementById(prefix + '_동구역직접입력');
+    if (custom.style.display === 'none') return;
+    const name = custom.value.trim();
+    if (!name){
+      custom.style.display = 'none';
+      renderZoneSelects();
+      return;
+    }
+    custom.style.display = 'none';
+    custom.value = '';
+    await addZone(name, prefix);
+  }
+
+  async function addZone(name, selectAfterPrefix){
+    const url = apiUrlValue();
+    if (!url){ showToast('설정 탭에서 API 주소를 먼저 입력해주세요.', true); return; }
+    try{
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ type: 'zone_add', data: { name } })
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || '등록 실패');
+      saveZoneCache(json.zones || []);
+      renderZoneSelects(selectAfterPrefix ? name : undefined);
+      if (selectAfterPrefix){
+        document.getElementById(selectAfterPrefix + '_동구역').value = name;
+      }
+      renderZoneManageList();
+      applyBackendVersion(json.version);
+      showToast(`'${name}' 구역이 구글시트에 등록되었습니다`);
+    }catch(err){
+      showToast('구역 등록 실패: ' + err.message, true);
+    }
+  }
+
+  async function removeZone(name){
+    if (!confirm(`'${name}' 구역을 목록에서 삭제할까요? (이미 저장된 조사 데이터에는 영향 없습니다)`)) return;
+    const url = apiUrlValue();
+    if (!url){ showToast('설정 탭에서 API 주소를 먼저 입력해주세요.', true); return; }
+    try{
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ type: 'zone_remove', data: { name } })
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || '삭제 실패');
+      saveZoneCache(json.zones || []);
+      renderZoneManageList();
+      renderZoneSelects();
+    }catch(err){
+      showToast('구역 삭제 실패: ' + err.message, true);
+    }
+  }
+
+  function renderZoneManageList(){
+    const box = document.getElementById('zoneManageList');
+    const zones = loadZoneCache();
+    if (zones.length === 0){
+      box.innerHTML = '<div class="empty">등록된 동/구역이 없습니다. 위에서 추가해주세요.</div>';
+      return;
+    }
+    box.innerHTML = zones.map(z =>
+      `<span class="zone-chip">${z}<button type="button" onclick="removeZone('${z.replace(/'/g,"\\'")}')">×</button></span>`
+    ).join('');
+  }
+
+  async function addZoneFromSettings(){
+    const input = document.getElementById('newZoneInput');
+    const name = input.value.trim();
+    if (!name){ showToast('구역명을 입력해주세요', true); return; }
+    input.value = '';
+    await addZone(name);
+  }
+
+  function switchTab(tab){
+    currentTab = tab;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    document.getElementById('tab-tree').style.display = tab === 'tree' ? '' : 'none';
+    document.getElementById('tab-bed').style.display = tab === 'bed' ? '' : 'none';
+    document.getElementById('tab-stats').style.display = tab === 'stats' ? '' : 'none';
+    document.getElementById('tab-settings').style.display = tab === 'settings' ? '' : 'none';
+    document.getElementById('submitBar').style.display = (tab === 'settings' || tab === 'stats') ? 'none' : '';
+    if (tab === 'tree' || tab === 'bed') loadEntries(tab);
+    if (tab === 'stats') loadStats();
+  }
+
+  function toggleSpeciesCustom(){
+    const sel = document.getElementById('t_수종');
+    const custom = document.getElementById('t_수종직접입력');
+    const isOther = sel.value === '기타(직접입력)';
+    custom.style.display = isOther ? '' : 'none';
+    if (isOther) custom.focus();
+  }
+
+  function getSpeciesValue(){
+    const sel = document.getElementById('t_수종');
+    if (sel.value === '기타(직접입력)'){
+      return document.getElementById('t_수종직접입력').value.trim();
+    }
+    return sel.value;
+  }
+
+  function updateStateChip(selectId, chipId){
+    const sel = document.getElementById(selectId);
+    const chip = document.getElementById(chipId);
+    const val = sel.value;
+    chip.textContent = val;
+    chip.className = 'chip ' + (
+      val === '정상' || val === '양호' ? 'state-정상' :
+      val === '주의' || val === '일부 불량' ? 'state-주의' :
+      val === '생육불량' || val === '불량' || val === '다수 불량' ? 'state-생육불량' :
+      val === '고사위험' ? 'state-고사위험' :
+      val === '고사' || val === '고사목 있음' ? 'state-고사' : ''
+    );
+  }
+
+  // ---------- 사진 처리 ----------
+  function handleFiles(type, files){
+    [...files].forEach(file => {
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const maxDim = 1280;
+          let { width, height } = img;
+          if (width > height && width > maxDim){ height = height * maxDim / width; width = maxDim; }
+          else if (height > maxDim){ width = width * maxDim / height; height = maxDim; }
+          canvas.width = width; canvas.height = height;
+          canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.72);
+          state[type].photos.push({ name: file.name.replace(/\s+/g,'_'), mime: 'image/jpeg', dataUrl });
+          renderThumbs(type);
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function renderThumbs(type){
+    const box = document.getElementById(type[0] + '_thumbs');
+    box.innerHTML = '';
+    state[type].photos.forEach((p, idx) => {
+      const div = document.createElement('div');
+      div.className = 'thumb';
+      div.innerHTML = `<img src="${p.dataUrl}"><button class="rm" onclick="removePhoto('${type}',${idx})">×</button>`;
+      box.appendChild(div);
+    });
+    const hint = document.getElementById(type[0] + '_photoHint');
+    hint.textContent = state[type].photos.length > 0
+      ? `사진 ${state[type].photos.length}장 첨부됨 · 저장 시 사진번호가 자동 부여됩니다.`
+      : '사진을 추가하면 사진번호가 자동으로 부여되고 사진관리 시트에도 기록됩니다.';
+  }
+
+  function removePhoto(type, idx){
+    state[type].photos.splice(idx, 1);
+    renderThumbs(type);
+  }
+
+  // ---------- 설정 ----------
+  function saveApiUrl(){
+    const url = document.getElementById('apiUrl').value.trim();
+    localStorage.setItem(STORAGE_KEY_URL, url);
+    showToast('저장되었습니다. 연결을 확인합니다...');
+    refreshStatus();
+    syncZonesFromServer();
+  }
+
   async function refreshStatus(){
+    const url = apiUrlValue();
     const dot = document.getElementById('statusDot');
     const text = document.getElementById('statusText');
     const beTag = document.getElementById('beVersionTag');
-    const url = apiUrlValue();
     if (!url){
-      dot.classList.add('off'); text.textContent = 'API 연결 확인 필요 · 설정 탭에서 주소 입력'; beTag.textContent = '미연결';
+      dot.classList.add('off');
+      text.textContent = 'API 연결 확인 필요 · 설정 탭에서 주소 입력';
+      beTag.textContent = '미연결';
       return;
     }
     try{
       const res = await fetch(url, { method: 'GET' });
       const json = await res.json();
       if (json.ok){
-        dot.classList.remove('off'); text.textContent = '구글 시트 연결됨';
+        dot.classList.remove('off');
+        text.textContent = '구글 시트 연결됨';
         applyBackendVersion(json.version);
       } else {
-        dot.classList.add('off'); text.textContent = '연결 확인 필요'; beTag.textContent = '확인 필요';
+        dot.classList.add('off');
+        text.textContent = '연결 확인 필요';
+        beTag.textContent = '확인 필요';
       }
     }catch(err){
-      dot.classList.add('off'); text.textContent = '연결 실패 · 주소 또는 네트워크 확인'; beTag.textContent = '연결 실패';
+      dot.classList.add('off');
+      text.textContent = '연결 실패 · 주소 또는 네트워크 확인';
+      beTag.textContent = '연결 실패';
     }
   }
+
   function applyBackendVersion(beVersion){
     const beTag = document.getElementById('beVersionTag');
     const badge = document.getElementById('headerVersionBadge');
     const note = document.getElementById('versionNote');
     badge.textContent = 'v' + APP_VERSION;
-    if (!beVersion){ beTag.textContent = '버전 정보 없음'; note.textContent = ''; return; }
+    if (!beVersion){
+      beTag.textContent = '버전 정보 없음';
+      note.textContent = '';
+      return;
+    }
     beTag.textContent = 'v' + beVersion;
-    if (beVersion === APP_VERSION){ beTag.classList.remove('mismatch'); note.textContent = ''; }
-    else { beTag.classList.add('mismatch'); note.textContent = '⚠ 프론트/백엔드 버전이 다릅니다. Code.gs를 최신 버전으로 새 배포해주세요.'; }
-  }
-  function saveApiUrl(){
-    const url = document.getElementById('apiUrl').value.trim();
-    localStorage.setItem(STORAGE_KEY_URL, url);
-    showToast('저장되었습니다. 연결을 확인합니다...');
-    refreshStatus();
-    loadAll();
+    if (beVersion === APP_VERSION){
+      beTag.classList.remove('mismatch');
+      note.textContent = '';
+    } else {
+      beTag.classList.add('mismatch');
+      note.textContent = '⚠ 프론트/백엔드 버전이 다릅니다. Code.gs를 최신 버전으로 새 배포해주세요.';
+    }
   }
 
-  async function runMigration(){
-    const btn = document.getElementById('btn-migrate');
-    const resultEl = document.getElementById('migrateResult');
+  // ---------- 제출 ----------
+  function collect(type){
+    const g = id => document.getElementById(id)?.value ?? '';
+    if (type === 'tree'){
+      return {
+        '점검일': g('t_점검일'), '동/구역': g('t_동구역'), '상세 위치': g('t_상세위치'),
+        '수종': getSpeciesValue(), '수량': g('t_수량'), '생육상태': g('t_생육상태'),
+        '잎·가지 상태': g('t_잎가지상태'), '토양수분': g('t_토양수분'), '토양상태': g('t_토양상태'),
+        '주변환경': g('t_주변환경'), '고사위험': g('t_고사위험'), '관찰내용': g('t_관찰내용'),
+        '추정원인(선택)': g('t_추정원인'), '우선조치': g('t_우선조치'), '재점검일': g('t_재점검일'),
+        '비고': g('t_비고')
+      };
+    }
+    return {
+      '점검일': g('b_점검일'), '동/구역': g('b_동구역'), '화단/구역 위치': g('b_위치'),
+      '토양수분': g('b_토양수분'), '토양다짐': g('b_토양다짐'), '표토상태': g('b_표토상태'),
+      '낙엽상태': g('b_낙엽상태'), '멀칭': g('b_멀칭'), '배수상태': g('b_배수상태'),
+      '잔디·지피 생육': g('b_잔디생육'), '관수시설': g('b_관수시설'), '수목 전반상태': g('b_수목전반상태'),
+      '주요 문제': g('b_주요문제'), '우선 개선사항': g('b_우선개선사항'), '비고': g('b_비고')
+    };
+  }
+
+  function validate(type, data){
+    if (!data['동/구역'] || data['동/구역'] === '__new__') return '동/구역을 선택하거나 등록해주세요.';
+    if (type === 'tree' && !data['수종']) return '수종을 선택하거나 입력해주세요.';
+    if (type === 'bed' && !data['화단/구역 위치']) return '화단/구역 위치를 입력해주세요.';
+    return null;
+  }
+
+  async function submitForm(){
+    if (currentTab === 'settings') return;
+    const type = currentTab;
+    const data = collect(type);
+    const err = validate(type, data);
+    if (err){ showToast(err, true); return; }
+
+    const url = apiUrlValue();
+    if (!url){ showToast('설정 탭에서 API 주소를 먼저 입력해주세요.', true); switchTab('settings'); return; }
+
+    const editing = editState[type];
+    const btn = document.getElementById('submitBtn');
     btn.disabled = true;
-    btn.textContent = '점검 중…';
-    resultEl.textContent = '';
+    btn.textContent = editing ? '수정 저장 중...' : '저장 중...';
+
+    const photos = state[type].photos.map(p => ({
+      name: p.name, mime: p.mime, base64: p.dataUrl.split(',')[1]
+    }));
+
+    if (editing) data['No'] = editing.no;
+    const requestType = editing ? (type + '_update') : type;
+
     try{
-      const res = await apiPost('migrate', {});
-      const parts = [];
-      if (res.trips) parts.push('여행: ' + res.trips.message);
-      if (res.legs) parts.push('일자기록: ' + res.legs.message);
-      resultEl.textContent = parts.join(' / ');
-      showToast('점검 완료');
-      await loadAll();
-    }catch(err){
-      resultEl.textContent = '점검 실패: ' + err.message;
-      showToast('오류: ' + err.message, true);
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // 프리플라이트 회피
+        body: JSON.stringify({ type: requestType, data, photos })
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || '저장 실패');
+
+      localStorage.setItem(STORAGE_KEY_ZONE, data['동/구역']);
+      if (editing){
+        showToast(`No.${editing.no} 수정 완료`);
+        cancelEdit(type);
+      } else {
+        showToast(`저장 완료! (No.${json.no}${json.photoNumber ? ', 사진 ' + json.photoNumber : ''})`);
+        resetForm(type, data['동/구역']);
+      }
+      loadEntries(type);
+      loadStats();
+    }catch(e){
+      showToast('저장 실패: ' + e.message, true);
     }finally{
       btn.disabled = false;
-      btn.textContent = '예전 기록 정렬 점검하기';
+      btn.textContent = editState[type] ? '수정 내용 저장' : '이 조사 내용 저장하기';
     }
   }
 
-  // ---------- 다중선택 chip ----------
-  function renderChips(containerId, options){
-    const el = document.getElementById(containerId);
-    el.innerHTML = options.map(opt => '<label class="chip" data-value="'+opt+'"><input type="checkbox" value="'+opt+'">'+opt+'</label>').join('');
-    el.querySelectorAll('.chip').forEach(function(chip){
-      chip.addEventListener('click', function(e){
-        e.preventDefault();
-        chip.classList.toggle('selected');
-        chip.querySelector('input').checked = chip.classList.contains('selected');
-      });
-    });
-  }
-  renderChips('chip-transport', TRANSPORT_OPTIONS);
-  renderChips('chip-lodging', LODGING_OPTIONS);
-  renderChips('chip-food', FOOD_OPTIONS);
-
-  // ---------- 이동 없이 한 곳에 머무는 날 처리 ----------
-  function setStayOnlyMode(on){
-    const fromWrap = document.getElementById('from-field-wrap');
-    const row = document.getElementById('from-to-row');
-    const toLabel = document.getElementById('to-field-label');
-    document.getElementById('l-stay-only').checked = on;
-    if (on){
-      fromWrap.style.display = 'none';
-      row.style.gridTemplateColumns = '1fr';
-      toLabel.textContent = '머무는 곳';
-      document.getElementById('l-from').value = '';
+  function resetForm(type, keepZone){
+    if (type === 'tree'){
+      ['t_상세위치','t_관찰내용','t_비고','t_재점검일'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('t_수종').value = '소나무';
+      document.getElementById('t_수종직접입력').value = '';
+      document.getElementById('t_수종직접입력').style.display = 'none';
+      document.getElementById('t_수량').value = 1;
+      document.getElementById('t_동구역').value = keepZone;
+      document.getElementById('t_동구역직접입력').style.display = 'none';
+      document.getElementById('t_점검일').value = todayStr();
+      updateStateChip('t_생육상태','t_생육상태chip');
     } else {
-      fromWrap.style.display = '';
-      row.style.gridTemplateColumns = '';
-      toLabel.textContent = '도착지';
+      ['b_위치','b_주요문제','b_비고'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('b_동구역').value = keepZone;
+      document.getElementById('b_동구역직접입력').style.display = 'none';
+      document.getElementById('b_점검일').value = todayStr();
+      updateStateChip('b_수목전반상태','b_수목전반상태chip');
     }
-  }
-  document.getElementById('l-stay-only').addEventListener('change', function(){
-    setStayOnlyMode(this.checked);
-  });
-  function getSelectedChips(containerId){ return Array.from(document.querySelectorAll('#'+containerId+' .chip.selected')).map(c => c.dataset.value); }
-  function setSelectedChips(containerId, values){
-    const set = new Set((values||'').split(',').map(s=>s.trim()).filter(Boolean));
-    document.querySelectorAll('#'+containerId+' .chip').forEach(function(chip){
-      const on = set.has(chip.dataset.value);
-      chip.classList.toggle('selected', on);
-      chip.querySelector('input').checked = on;
-    });
+    state[type].photos = [];
+    renderThumbs(type);
   }
 
-  // ---------- 데이터 로드 ----------
-  async function loadAll(){
+  // ---------- 통계 (생육상태 · 핵심지표) ----------
+  async function loadStats(){
+    const url = apiUrlValue();
+    const gridBox = document.getElementById('statsGrowthGrid');
+    const listBox = document.getElementById('statsIndicatorList');
+    const updatedBox = document.getElementById('statsUpdatedAt');
+    if (!url){
+      gridBox.innerHTML = '<div class="stats-cell"><div class="n">-</div><div class="l">설정 탭에서 API 주소를 먼저 입력해주세요</div></div>';
+      listBox.innerHTML = '';
+      return;
+    }
+    gridBox.innerHTML = '<div class="stats-cell"><div class="n">…</div><div class="l">불러오는 중</div></div>';
+    listBox.innerHTML = '';
     try{
-      const json = await apiGet('data');
-      TRIPS = json.trips || []; LEGS = json.legs || [];
-      applyBackendVersion(json.version);
-      refreshTripSelect();
-      if (document.getElementById('tab-list').classList.contains('active')) renderList();
-      if (document.getElementById('tab-map').classList.contains('active')) renderMap();
-      if (document.getElementById('tab-stats').classList.contains('active')) renderStats();
+      const res = await fetch(url + (url.indexOf('?') > -1 ? '&' : '?') + 'action=stats');
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || '통계를 불러오지 못했습니다');
+      if (!json.stats) throw new Error('백엔드가 예전 버전입니다. Apps Script를 새 버전으로 다시 배포해주세요.');
+      const stats = json.stats;
+
+      gridBox.innerHTML = stats.growth.map(g => `
+        <div class="stats-cell g-${g.label}">
+          <div class="n">${g.count}</div>
+          <div class="l">${g.label}</div>
+        </div>
+      `).join('');
+
+      listBox.innerHTML = stats.indicators.map(i => `
+        <div class="stats-row">
+          <span class="l">${i.label}</span>
+          <span class="n">${i.value}</span>
+        </div>
+      `).join('');
+
+      if (stats.updatedAt){
+        const d = new Date(stats.updatedAt);
+        updatedBox.textContent = '마지막 갱신: ' + d.toLocaleString('ko-KR');
+      }
     }catch(err){
-      showToast(err.message, true);
+      gridBox.innerHTML = '<div class="stats-cell"><div class="n">-</div><div class="l">불러오기 실패</div></div>';
+      listBox.innerHTML = `<div class="stats-row"><span class="l">${err.message}</span></div>`;
     }
   }
 
-  function refreshTripSelect(){
-    const sel = document.getElementById('trip-select');
-    const prev = SELECTED_TRIP_ID;
-    sel.innerHTML = '<option value="">여행을 선택하세요</option>' +
-      TRIPS.map(t => '<option value="'+t.id+'">'+escapeHtml(t.title)+' ('+(t.startDate||'')+')</option>').join('');
-    if (prev && TRIPS.some(t => t.id === prev)) sel.value = prev;
-  }
+  // ---------- 최근 입력 내역 (조회 · 수정 · 삭제) ----------
+  const entryCache = { tree: [], bed: [] };
 
-  document.getElementById('trip-select').addEventListener('change', function(){
-    SELECTED_TRIP_ID = this.value;
-    document.getElementById('trip-form').style.display = 'none';
-    renderSelectedTrip();
-  });
-
-  document.getElementById('btn-new-trip').addEventListener('click', function(){
-    SELECTED_TRIP_ID = '';
-    document.getElementById('trip-select').value = '';
-    document.getElementById('trip-banner').style.display = 'none';
-    document.getElementById('leg-form').style.display = 'none';
-    document.getElementById('leg-timeline').innerHTML = '';
-    document.getElementById('trip-form').style.display = 'block';
-    ['t-title','t-companions','t-budget','t-memo'].forEach(id => document.getElementById(id).value = '');
-    document.getElementById('t-start').value = '';
-    document.getElementById('t-end').value = '';
-    document.getElementById('t-rating').value = '5';
-  });
-
-  document.getElementById('btn-save-trip').addEventListener('click', async function(){
-    const title = document.getElementById('t-title').value.trim();
-    const start = document.getElementById('t-start').value;
-    if (!title || !start){ showToast('여행 제목과 시작일은 필수예요', true); return; }
-    const btn = this;
-    btn.disabled = true; btn.textContent = '만드는 중…';
+  async function loadEntries(type){
+    const box = document.getElementById(type[0] + '_entryList');
+    const url = apiUrlValue();
+    if (!url){ box.innerHTML = '<div class="empty">설정 탭에서 API 주소를 먼저 입력해주세요.</div>'; return; }
+    box.innerHTML = '<div class="empty">불러오는 중...</div>';
     try{
-      const data = {
-        title: title, startDate: start,
-        endDate: document.getElementById('t-end').value,
-        companions: document.getElementById('t-companions').value.trim(),
-        budget: document.getElementById('t-budget').value,
-        rating: document.getElementById('t-rating').value,
-        memo: document.getElementById('t-memo').value.trim()
-      };
-      const res = await apiPost('trip_add', data);
-      showToast('여행이 만들어졌어요. 이제 매일 기록을 남겨보세요 ✓');
-      await loadAll();
-      SELECTED_TRIP_ID = res.id;
-      document.getElementById('trip-select').value = res.id;
-      document.getElementById('trip-form').style.display = 'none';
-      renderSelectedTrip();
-    }catch(err){ showToast('오류: ' + err.message, true); }
-    finally{ btn.disabled = false; btn.textContent = '여행 만들기'; }
-  });
-
-  function renderSelectedTrip(){
-    const banner = document.getElementById('trip-banner');
-    const legForm = document.getElementById('leg-form');
-    const timeline = document.getElementById('leg-timeline');
-    if (!SELECTED_TRIP_ID){ banner.style.display='none'; legForm.style.display='none'; timeline.innerHTML=''; return; }
-    const trip = TRIPS.find(t => t.id === SELECTED_TRIP_ID);
-    if (!trip){ banner.style.display='none'; legForm.style.display='none'; timeline.innerHTML=''; return; }
-
-    banner.style.display = 'block';
-    banner.innerHTML = '<div class="trip-banner"><div class="t-title">'+escapeHtml(trip.title)+'</div>' +
-      '<div class="t-dates">'+(trip.startDate||'')+(trip.endDate ? ' → ' + trip.endDate : '')+
-      (trip.companions ? ' · ' + escapeHtml(trip.companions) : '')+'</div></div>';
-
-    legForm.style.display = 'block';
-    clearLegForm();
-    document.getElementById('l-date').value = trip.startDate || '';
-    renderLegTimeline(trip);
+      const sep = url.includes('?') ? '&' : '?';
+      const res = await fetch(url + sep + 'action=list&type=' + type + '&limit=15', { method: 'GET' });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || '목록을 불러오지 못했습니다');
+      entryCache[type] = json.items || [];
+      renderEntryList(type);
+    }catch(err){
+      box.innerHTML = `<div class="empty">불러오기 실패: ${err.message}</div>`;
+    }
   }
 
-  function renderLegTimeline(trip){
-    const legs = LEGS.filter(l => l.tripId === trip.id).sort((a,b) => new Date(a.date) - new Date(b.date));
-    const timeline = document.getElementById('leg-timeline');
-    if (legs.length === 0){
-      timeline.innerHTML = '<div class="hint" style="margin-top:6px;">아직 이 여행의 기록이 없어요. 위 폼으로 오늘 일정을 남겨보세요.</div>';
+  function summarizeEntry(type, item){
+    if (type === 'tree'){
+      return `${item['상세 위치'] || '위치 미기재'} · ${item['수종'] || ''} ${item['수량'] ? '('+item['수량']+'주)' : ''} · 생육상태 ${item['생육상태'] || ''}`;
+    }
+    return `${item['화단/구역 위치'] || '위치 미기재'} · 수목전반 ${item['수목 전반상태'] || ''} · ${item['우선 개선사항'] || ''}`;
+  }
+
+  function renderEntryList(type){
+    const box = document.getElementById(type[0] + '_entryList');
+    const items = entryCache[type];
+    if (!items || items.length === 0){
+      box.innerHTML = '<div class="empty">저장된 조사 내역이 없습니다.</div>';
       return;
     }
-    const tripStart = trip.startDate ? new Date(trip.startDate) : null;
-    timeline.innerHTML = '<div class="section-title">지금까지 기록 ('+legs.length+'건)</div><div class="timeline">' +
-      legs.map(function(l){
-        const dayNum = tripStart && l.date ? Math.round((new Date(l.date) - tripStart) / 86400000) + 1 : null;
-        const route = buildRouteText(l);
-        const tags = buildTagsText(l);
-        return '<div class="leg-item">' +
-          '<div class="leg-day">'+(dayNum ? dayNum+'일차' : '')+'<br>'+(l.date||'').substring(5)+'</div>' +
-          '<div class="leg-body"><div class="leg-route">'+escapeHtml(route || '기록')+'</div>' +
-          (tags ? '<div class="leg-tags">'+escapeHtml(tags)+'</div>' : '') +
-          (l.actualSpend ? '<div class="leg-spend">지출 '+Number(l.actualSpend).toLocaleString()+'원</div>' : '') +
-          (l.memo ? '<div class="leg-memo">'+escapeHtml(l.memo)+'</div>' : '') +
-          '<div class="leg-actions"><button onclick="editLeg(\''+l.id+'\')">수정</button><button class="rm" onclick="removeLeg(\''+l.id+'\')">삭제</button></div>' +
-          '</div></div>';
-      }).join('') + '</div>';
+    box.innerHTML = items.map(item => `
+      <div class="entry-item">
+        <div class="entry-top">
+          <span class="entry-no">No.${item['No']}</span>
+          <span class="entry-date">${formatDateTime(item['점검일'])} · ${item['동/구역'] || ''}</span>
+        </div>
+        <div class="entry-summary">${summarizeEntry(type, item)}</div>
+        <div class="entry-actions">
+          <button type="button" class="edit" onclick="startEdit('${type}', ${item['No']})">✏️ 수정</button>
+          <button type="button" class="delete" onclick="confirmDeleteEntry('${type}', ${item['No']})">🗑 삭제</button>
+        </div>
+      </div>
+    `).join('');
   }
 
-  // ---------- 사진 ----------
-  document.getElementById('btn-add-photo').addEventListener('click', () => document.getElementById('l-photo-input').click());
-  document.getElementById('l-photo-input').addEventListener('change', function(e){
-    Array.from(e.target.files || []).forEach(function(file){
-      const localId = 'p' + Date.now() + Math.random().toString(36).slice(2,7);
-      const reader = new FileReader();
-      reader.onload = function(){
-        const dataUrl = reader.result;
-        PENDING_PHOTOS.push({ localId: localId, base64: dataUrl.split(',')[1], mime: file.type || 'image/jpeg', name: file.name || (localId+'.jpg'), dataUrl: dataUrl });
-        renderPhotoPreview();
-      };
-      reader.readAsDataURL(file);
-    });
-    e.target.value = '';
-  });
-  function renderPhotoPreview(){
-    const grid = document.getElementById('photo-preview');
-    let html = '';
-    EXISTING_PHOTO_URLS.forEach((url, i) => {
-      html += '<div class="photo-thumb"><img src="'+url+'" onerror="this.parentElement.style.display=\'none\'"><button type="button" class="rm" onclick="removeExistingPhoto('+i+')">✕</button></div>';
-    });
-    PENDING_PHOTOS.forEach(p => {
-      html += '<div class="photo-thumb"><img src="'+p.dataUrl+'"><button type="button" class="rm" onclick="removePendingPhoto(\''+p.localId+'\')">✕</button></div>';
-    });
-    grid.innerHTML = html;
-  }
-  function removePendingPhoto(localId){ PENDING_PHOTOS = PENDING_PHOTOS.filter(p => p.localId !== localId); renderPhotoPreview(); }
-  function removeExistingPhoto(i){ EXISTING_PHOTO_URLS.splice(i,1); renderPhotoPreview(); }
-
-  // ---------- 일자 기록 저장 ----------
-  let legSaveInFlight = false;
-  document.getElementById('btn-save-leg').addEventListener('click', async function(){
-    if (legSaveInFlight){ return; } // 저장 처리 중 중복 탭 방지
-    if (!SELECTED_TRIP_ID){ showToast('여행을 먼저 선택하거나 만들어주세요', true); return; }
-    const date = document.getElementById('l-date').value;
-    const toPlace = document.getElementById('l-to').value.trim();
-    if (!date || !toPlace){ showToast('날짜와 도착지는 필수예요', true); return; }
-
-    legSaveInFlight = true;
-    const btn = this;
-    btn.disabled = true;
-    btn.textContent = PENDING_PHOTOS.length ? '사진 업로드 중…' : '저장 중…';
-    try{
-      const data = {
-        id: document.getElementById('l-id').value,
-        tripId: SELECTED_TRIP_ID,
-        date: date,
-        fromPlace: document.getElementById('l-from').value.trim(),
-        toPlace: toPlace,
-        departTime: document.getElementById('l-depart-time').value,
-        arriveTime: document.getElementById('l-arrive-time').value,
-        transport: getSelectedChips('chip-transport').join(', '),
-        lodgingType: getSelectedChips('chip-lodging').join(', '),
-        lodgingName: document.getElementById('l-lodging-name').value.trim(),
-        foodType: getSelectedChips('chip-food').join(', '),
-        foodName: document.getElementById('l-food-name').value.trim(),
-        actualSpend: document.getElementById('l-spend').value,
-        memo: document.getElementById('l-memo').value.trim(),
-        photoUrl: EXISTING_PHOTO_URLS.join(',')
-      };
-      const photos = PENDING_PHOTOS.map(p => ({ name: p.name, mime: p.mime, base64: p.base64 }));
-      const type = data.id ? 'leg_update' : 'leg_add';
-      await apiPost(type, data, photos);
-      showToast('오늘 기록이 저장됐어요 ✓');
-      await loadAll();
-      document.getElementById('trip-select').value = SELECTED_TRIP_ID;
-      clearLegForm();
-      const trip = TRIPS.find(t => t.id === SELECTED_TRIP_ID);
-      if (trip) renderLegTimeline(trip);
-    }catch(err){ showToast('오류: ' + err.message, true); }
-    finally{ legSaveInFlight = false; btn.disabled = false; btn.textContent = '오늘 기록 저장'; }
-  });
-
-  function clearLegForm(){
-    ['l-id','l-from','l-to','l-depart-time','l-arrive-time','l-lodging-name','l-food-name','l-spend','l-memo'].forEach(id => document.getElementById(id).value = '');
-    setSelectedChips('chip-transport', '');
-    setSelectedChips('chip-lodging', '');
-    setSelectedChips('chip-food', '');
-    setStayOnlyMode(false);
-    PENDING_PHOTOS = [];
-    EXISTING_PHOTO_URLS = [];
-    renderPhotoPreview();
+  function findEntry(type, no){
+    return (entryCache[type] || []).find(i => Number(i['No']) === Number(no));
   }
 
-  function editLeg(id){
-    const l = LEGS.find(x => x.id === id);
-    if (!l) return;
-    document.getElementById('l-id').value = l.id;
-    document.getElementById('l-date').value = l.date || '';
-    document.getElementById('l-from').value = l.fromPlace || '';
-    document.getElementById('l-to').value = l.toPlace || '';
-    setStayOnlyMode(!l.fromPlace && !!l.toPlace);
-    document.getElementById('l-depart-time').value = l.departTime || '';
-    document.getElementById('l-arrive-time').value = l.arriveTime || '';
-    document.getElementById('l-lodging-name').value = l.lodgingName || '';
-    document.getElementById('l-food-name').value = l.foodName || '';
-    document.getElementById('l-spend').value = l.actualSpend || '';
-    document.getElementById('l-memo').value = l.memo || '';
-    setSelectedChips('chip-transport', l.transport || '');
-    setSelectedChips('chip-lodging', l.lodgingType || '');
-    setSelectedChips('chip-food', l.foodType || '');
-    PENDING_PHOTOS = [];
-    EXISTING_PHOTO_URLS = (l.photoUrl || '').split(',').map(s=>s.trim()).filter(Boolean);
-    renderPhotoPreview();
-    window.scrollTo(0, document.getElementById('leg-form').offsetTop - 20);
+  function setSelectValueSafe(selectId, value){
+    const sel = document.getElementById(selectId);
+    if (!sel) return false;
+    const has = Array.from(sel.options).some(o => o.value === value);
+    if (has){ sel.value = value; return true; }
+    return false;
   }
 
-  async function removeLeg(id){
-    if (!confirm('이 기록을 삭제할까요?')) return;
-    try{
-      await apiPost('leg_delete', { id: id });
-      showToast('삭제됐어요');
-      await loadAll();
-      document.getElementById('trip-select').value = SELECTED_TRIP_ID;
-      const trip = TRIPS.find(t => t.id === SELECTED_TRIP_ID);
-      if (trip) renderLegTimeline(trip); else renderSelectedTrip();
-    }catch(err){ showToast('오류: ' + err.message, true); }
-  }
+  function startEdit(type, no){
+    const item = findEntry(type, no);
+    if (!item){ showToast('해당 항목을 찾을 수 없습니다. 새로고침 후 다시 시도해주세요.', true); return; }
 
-  // ---------- 목록 ----------
-  document.getElementById('filter-year').addEventListener('change', renderList);
-  document.getElementById('filter-search').addEventListener('input', renderList);
+    switchTab(type);
+    editState[type] = { no: no };
+    state[type].photos = [];
+    renderThumbs(type);
 
-  function renderList(){
-    const container = document.getElementById('list-container');
-    const yearSel = document.getElementById('filter-year');
-    const currentYear = yearSel.value;
-    const search = document.getElementById('filter-search').value.toLowerCase();
+    const prefix = type[0];
+    document.getElementById(prefix + '_editBanner').style.display = '';
+    document.getElementById(prefix + '_editNo').textContent = no;
 
-    const years = Array.from(new Set(TRIPS.map(t => (t.startDate||'').substring(0,4)).filter(Boolean))).sort().reverse();
-    if (yearSel.options.length <= 1){
-      years.forEach(y => { const opt = document.createElement('option'); opt.value = y; opt.textContent = y+'년'; yearSel.appendChild(opt); });
+    // 동/구역: 목록에 없으면 임시 옵션 추가 후 선택
+    const zoneSel = document.getElementById(prefix + '_동구역');
+    if (!setSelectValueSafe(prefix + '_동구역', item['동/구역'])){
+      const opt = document.createElement('option');
+      opt.value = item['동/구역']; opt.textContent = item['동/구역'] + ' (목록에 없음)';
+      zoneSel.insertBefore(opt, zoneSel.lastElementChild);
+      zoneSel.value = item['동/구역'];
+    }
+    document.getElementById(prefix + '_동구역직접입력').style.display = 'none';
+
+    document.getElementById(prefix + '_점검일').value = item['점검일'] ? toDateInputValue(item['점검일']) : todayStr();
+
+    if (type === 'tree'){
+      document.getElementById('t_상세위치').value = item['상세 위치'] || '';
+      if (!setSelectValueSafe('t_수종', item['수종'])){
+        document.getElementById('t_수종').value = '기타(직접입력)';
+        document.getElementById('t_수종직접입력').style.display = '';
+        document.getElementById('t_수종직접입력').value = item['수종'] || '';
+      } else {
+        document.getElementById('t_수종직접입력').style.display = 'none';
+      }
+      document.getElementById('t_수량').value = item['수량'] || 1;
+      document.getElementById('t_생육상태').value = item['생육상태'] || '정상';
+      updateStateChip('t_생육상태','t_생육상태chip');
+      document.getElementById('t_잎가지상태').value = item['잎·가지 상태'] || '정상';
+      document.getElementById('t_토양수분').value = item['토양수분'] || '적정';
+      document.getElementById('t_토양상태').value = item['토양상태'] || '양호';
+      document.getElementById('t_주변환경').value = item['주변환경'] || '양호';
+      document.getElementById('t_고사위험').value = item['고사위험'] || '낮음';
+      document.getElementById('t_관찰내용').value = item['관찰내용'] || '';
+      document.getElementById('t_추정원인').value = item['추정원인(선택)'] || '';
+      document.getElementById('t_우선조치').value = item['우선조치'] || '관찰';
+      document.getElementById('t_재점검일').value = item['재점검일'] ? toDateInputValue(item['재점검일']) : '';
+      document.getElementById('t_비고').value = item['비고'] || '';
+      document.getElementById('t_photoHint').textContent = item['사진번호']
+        ? `기존 사진: ${item['사진번호']} · 새 사진을 추가하면 함께 기록됩니다.`
+        : '사진을 추가하면 사진번호가 자동으로 부여되고 사진관리 시트에도 기록됩니다.';
+    } else {
+      document.getElementById('b_위치').value = item['화단/구역 위치'] || '';
+      document.getElementById('b_토양수분').value = item['토양수분'] || '적정';
+      document.getElementById('b_토양다짐').value = item['토양다짐'] || '양호';
+      document.getElementById('b_표토상태').value = item['표토상태'] || '유기물층 있음';
+      document.getElementById('b_낙엽상태').value = item['낙엽상태'] || '적정';
+      document.getElementById('b_멀칭').value = item['멀칭'] || '있음';
+      document.getElementById('b_배수상태').value = item['배수상태'] || '양호';
+      document.getElementById('b_잔디생육').value = item['잔디·지피 생육'] || '양호';
+      document.getElementById('b_관수시설').value = item['관수시설'] || '있음';
+      document.getElementById('b_수목전반상태').value = item['수목 전반상태'] || '양호';
+      updateStateChip('b_수목전반상태','b_수목전반상태chip');
+      document.getElementById('b_주요문제').value = item['주요 문제'] || '';
+      document.getElementById('b_우선개선사항').value = item['우선 개선사항'] || '모니터링';
+      document.getElementById('b_비고').value = item['비고'] || '';
+      document.getElementById('b_photoHint').textContent = item['사진번호']
+        ? `기존 사진: ${item['사진번호']} · 새 사진을 추가하면 함께 기록됩니다.`
+        : '사진을 추가하면 사진번호가 자동으로 부여되고 사진관리 시트에도 기록됩니다.';
     }
 
-    let trips = TRIPS.slice();
-    if (currentYear) trips = trips.filter(t => (t.startDate||'').startsWith(currentYear));
-    if (search) trips = trips.filter(t => {
-      const legsText = LEGS.filter(l => l.tripId === t.id).map(l => l.fromPlace+' '+l.toPlace+' '+l.memo).join(' ').toLowerCase();
-      return (t.title||'').toLowerCase().includes(search) || legsText.includes(search);
-    });
+    document.getElementById('submitBtn').textContent = '수정 내용 저장';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 
-    if (trips.length === 0){
-      container.innerHTML = '<div class="empty"><div class="stamp">NO<br>TRIP</div>아직 기록된 여행이 없어요<br>입력 탭에서 첫 여행을 만들어보세요</div>';
-      return;
+  function cancelEdit(type){
+    const wasEditing = !!editState[type];
+    editState[type] = null;
+    const prefix = type[0];
+    document.getElementById(prefix + '_editBanner').style.display = 'none';
+    if (wasEditing){
+      const zone = document.getElementById(prefix + '_동구역').value;
+      resetForm(type, zone === '__new__' ? '' : zone);
     }
-
-    container.innerHTML = trips.map(function(t){
-      const legs = LEGS.filter(l => l.tripId === t.id).sort((a,b) => new Date(a.date)-new Date(b.date));
-      const stars = '★'.repeat(Number(t.rating)||0) + '☆'.repeat(5-(Number(t.rating)||0));
-      const totalSpend = legs.reduce((s,l) => s + (parseFloat(l.actualSpend)||0), 0);
-      const code = (t.title || '?').substring(0,2);
-      const tripStart = t.startDate ? new Date(t.startDate) : null;
-
-      const timelineHtml = legs.length ? legs.map(function(l){
-        const dayNum = tripStart && l.date ? Math.round((new Date(l.date) - tripStart) / 86400000) + 1 : null;
-        return buildDaySummaryCard(l, dayNum);
-      }).join('') : '<div class="hint">아직 일자 기록이 없어요</div>';
-
-      return '<div class="trip-card">' +
-        '<div class="tc-top" onclick="toggleTripDetail(\''+t.id+'\')">' +
-          '<div class="stamp">'+escapeHtml(code)+'<br>'+(t.startDate||'').substring(0,4)+'</div>' +
-          '<div><div class="tc-title">'+escapeHtml(t.title)+'</div><div class="tc-sub">'+(t.startDate||'')+(t.endDate ? ' → '+t.endDate : '')+'</div><div class="rating">'+stars+'</div></div>' +
-        '</div>' +
-        (totalSpend ? '<div class="tc-meta">누적 지출 '+totalSpend.toLocaleString()+'원 · 기록 '+legs.length+'건</div>' : '<div class="tc-meta">기록 '+legs.length+'건</div>') +
-        '<div class="tc-actions"><button class="btn btn-ghost btn-small" onclick="goAddLegFor(\''+t.id+'\')">기록 이어쓰기</button><button class="btn btn-danger" onclick="removeTrip(\''+t.id+'\')">여행 삭제</button></div>' +
-        '<div id="detail-'+t.id+'" style="display:none;">'+timelineHtml+'</div>' +
-      '</div>';
-    }).join('');
+    document.getElementById('submitBtn').textContent = '이 조사 내용 저장하기';
   }
 
-  function toggleTripDetail(id){
-    const el = document.getElementById('detail-'+id);
-    if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
-  }
-  function goAddLegFor(tripId){
-    SELECTED_TRIP_ID = tripId;
-    switchTab('add');
-    document.getElementById('trip-select').value = tripId;
-    document.getElementById('trip-form').style.display = 'none';
-    renderSelectedTrip();
-    window.scrollTo(0,0);
-  }
-  async function removeTrip(id){
-    if (!confirm('이 여행과 여행에 속한 모든 일자 기록을 삭제할까요?')) return;
+  async function confirmDeleteEntry(type, no){
+    if (!confirm(`No.${no} 항목을 삭제할까요? 되돌릴 수 없습니다.`)) return;
+    const url = apiUrlValue();
+    if (!url){ showToast('설정 탭에서 API 주소를 먼저 입력해주세요.', true); return; }
     try{
-      await apiPost('trip_delete', { id: id });
-      showToast('삭제됐어요');
-      if (SELECTED_TRIP_ID === id) SELECTED_TRIP_ID = '';
-      await loadAll();
-      renderList();
-    }catch(err){ showToast('오류: ' + err.message, true); }
-  }
-
-  // ---------- 지도 ----------
-  function renderMap(){
-    const holder = document.getElementById('map-svg-holder');
-    const pts = LEGS.filter(l => l.lat && l.lng && !isNaN(parseFloat(l.lat)) && !isNaN(parseFloat(l.lng)));
-    const W = 600, H = 320;
-    function project(lat, lng){ return [(parseFloat(lng)+180)/360*W, (90-parseFloat(lat))/180*H]; }
-    let dots = '';
-    pts.forEach(function(l){
-      const [x,y] = project(l.lat, l.lng);
-      const trip = TRIPS.find(t => t.id === l.tripId);
-      const label = (trip ? trip.title + ' · ' : '') + (l.toPlace || l.fromPlace || '');
-      dots += '<circle class="map-dot" cx="'+x+'" cy="'+y+'" r="6" data-label="'+escapeHtml(label)+'"></circle>';
-    });
-    holder.innerHTML = '<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg"><rect width="'+W+'" height="'+H+'" fill="transparent"/>' + gridLines(W,H) + dots + '</svg>';
-
-    const tooltip = document.getElementById('pin-tooltip');
-    holder.querySelectorAll('.map-dot').forEach(function(dot){
-      dot.addEventListener('click', function(){
-        const rect = holder.getBoundingClientRect();
-        tooltip.textContent = dot.getAttribute('data-label');
-        tooltip.style.left = (dot.getBoundingClientRect().left - rect.left + 6) + 'px';
-        tooltip.style.top = (dot.getBoundingClientRect().top - rect.top) + 'px';
-        tooltip.style.opacity = 1;
-        setTimeout(()=>{ tooltip.style.opacity = 0; }, 1800);
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ type: type + '_delete', data: { No: no } })
       });
-    });
-    const skipped = LEGS.length - pts.length;
-    document.getElementById('map-legend').textContent = pts.length + '개 지점 표시 중' + (skipped>0 ? ' (위치를 찾지 못한 '+skipped+'건 제외)' : '');
-  }
-  function gridLines(W,H){
-    let lines = '';
-    for(let i=1;i<12;i++){ const x=i*W/12; lines += '<line x1="'+x+'" y1="0" x2="'+x+'" y2="'+H+'" stroke="var(--line)" stroke-width="1"/>'; }
-    for(let i=1;i<6;i++){ const y=i*H/6; lines += '<line x1="0" y1="'+y+'" x2="'+W+'" y2="'+y+'" stroke="var(--line)" stroke-width="1"/>'; }
-    return lines;
-  }
-
-  // ---------- 통계 ----------
-  function renderStats(){
-    const totalTrips = TRIPS.length;
-    const places = new Set();
-    let totalSpend = 0;
-    LEGS.forEach(l => { if (l.toPlace) places.add(l.toPlace); if (l.actualSpend) totalSpend += parseFloat(l.actualSpend)||0; });
-
-    document.getElementById('stat-grid').innerHTML =
-      '<div class="stat-box"><div class="num">'+totalTrips+'</div><div class="label">총 여행 횟수</div></div>' +
-      '<div class="stat-box"><div class="num">'+places.size+'</div><div class="label">방문지 수</div></div>' +
-      '<div class="stat-box"><div class="num">'+Math.round(totalSpend/10000)+'만</div><div class="label">총 지출(원)</div></div>';
-
-    const byYear = {};
-    TRIPS.forEach(t => { const year = (t.startDate||'').substring(0,4) || '미상'; byYear[year] = (byYear[year]||0) + 1; });
-    const years = Object.keys(byYear).sort().reverse();
-    const maxCount = Math.max.apply(null, years.map(y => byYear[y]).concat([1]));
-    document.getElementById('year-breakdown').innerHTML = years.map(function(y){
-      const pct = Math.round(byYear[y] / maxCount * 100);
-      return '<div class="year-row"><div class="yr">'+y+'</div><div class="bar-track"><div class="bar-fill" style="width:'+pct+'%"></div></div><div class="cnt">'+byYear[y]+'회</div></div>';
-    }).join('');
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || '삭제 실패');
+      showToast(`No.${no} 삭제되었습니다`);
+      if (editState[type] && Number(editState[type].no) === Number(no)) cancelEdit(type);
+      loadEntries(type);
+      loadStats();
+    }catch(err){
+      showToast('삭제 실패: ' + err.message, true);
+    }
   }
 
-  // ---------- 초기화 ----------
-  window.addEventListener('DOMContentLoaded', () => {
-    initTheme();
-    document.getElementById('feVersionTag').textContent = 'v' + APP_VERSION;
-    document.getElementById('headerVersionBadge').textContent = 'v' + APP_VERSION;
-    document.getElementById('l-date').valueAsDate = new Date();
-    document.getElementById('apiUrl').value = apiUrlValue();
-    refreshStatus();
-    loadAll();
-  });
+  function deleteCurrentEntry(type){
+    if (!editState[type]) return;
+    confirmDeleteEntry(type, editState[type].no);
+  }
+
+  function showToast(msg, isError){
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show' + (isError ? ' error' : '');
+    setTimeout(()=>{ t.className = 'toast' + (isError ? ' error' : ''); }, 2800);
+  }
 </script>
 </body>
 </html>
