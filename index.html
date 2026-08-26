@@ -150,7 +150,26 @@
   .stats-row{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--input-bg);}
   .stats-row .l{font-size:20px;}
   .stats-row .n{font-size:23px;font-weight:800;color:var(--pine);}
-  .stats-updated{font-size:17px;color:var(--sub);text-align:right;margin-top:2px;}
+  .zone-card{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px;background:var(--input-bg);}
+  .zone-card .zone-name{font-weight:800;color:var(--pine);font-size:19px;}
+  .zone-card .zone-total{font-size:16px;color:var(--sub);margin-left:6px;}
+  .zone-card .zone-sub-label{font-size:14px;color:var(--sub);margin-top:6px;}
+  .zone-card .zone-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;}
+  .zone-chips .mini-chip{font-size:15px;font-weight:700;padding:3px 10px;border-radius:999px;background:var(--chip-bg);color:var(--ink);}
+  .zone-chips .mini-chip.mc-정상,.zone-chips .mini-chip.mc-양호{background:#E4F1E6;color:var(--success);}
+  .zone-chips .mini-chip.mc-주의,.zone-chips .mini-chip.mc-일부불량{background:#FBF0E4;color:var(--rust);}
+  .zone-chips .mini-chip.mc-생육불량,.zone-chips .mini-chip.mc-다수불량{background:#FCE7DE;color:#C0562B;}
+  .zone-chips .mini-chip.mc-고사위험{background:#FADAD6;color:var(--danger);}
+  .zone-chips .mini-chip.mc-고사,.zone-chips .mini-chip.mc-고사목있음{background:#F2CFCB;color:#7A1F17;}
+  html[data-theme="dark"] .zone-chips .mini-chip.mc-정상,
+  html[data-theme="dark"] .zone-chips .mini-chip.mc-양호{background:#1E3B26;color:#8FD6A0;}
+  html[data-theme="dark"] .zone-chips .mini-chip.mc-주의,
+  html[data-theme="dark"] .zone-chips .mini-chip.mc-일부불량{background:#3A2C15;color:#E0A25C;}
+  html[data-theme="dark"] .zone-chips .mini-chip.mc-생육불량,
+  html[data-theme="dark"] .zone-chips .mini-chip.mc-다수불량{background:#3D2418;color:#E3946A;}
+  html[data-theme="dark"] .zone-chips .mini-chip.mc-고사위험{background:#3D1D18;color:#E27F72;}
+  html[data-theme="dark"] .zone-chips .mini-chip.mc-고사,
+  html[data-theme="dark"] .zone-chips .mini-chip.mc-고사목있음{background:#2E120F;color:#D66A5C;}
 
   .photo-box{
     border:1.5px dashed var(--line); border-radius:12px; padding:12px; background:var(--input-bg);
@@ -622,6 +641,10 @@
       <div class="stats-list" id="statsIndicatorList"></div>
       <div class="stats-updated" id="statsUpdatedAt"></div>
     </div>
+    <div class="card">
+      <div class="section-label">구역별 집계 (수목조사 · 화단조사)</div>
+      <div id="statsZoneList"></div>
+    </div>
     <button type="button" class="btn-sm" style="width:100%;" onclick="loadStats()">🔄 통계 새로고침</button>
     <div class="settings-note" style="margin-top:10px;">
       통계는 조사 내용을 저장·수정·삭제할 때마다 자동으로 갱신되며, 구글시트의 <b>자동통계</b> 탭에도 실시간으로 반영됩니다.
@@ -704,7 +727,7 @@
   const THEME_KEY = 'jogyeongsu_theme';
   const DEFAULT_API_URL = ''; // 배포 후 이 값에 기본 URL을 넣어두면 매번 설정할 필요가 없습니다.
 
-  const APP_VERSION = '1.9.0';
+  const APP_VERSION = '2.2.0';
 
   function todayStr(){
     const d = new Date();
@@ -1199,19 +1222,46 @@
     renderThumbs(type);
   }
 
-  // ---------- 통계 (생육상태 · 핵심지표) ----------
+  // ---------- 통계 (생육상태 · 핵심지표 · 구역별 집계) ----------
+  const TREE_GROWTH_KEYS = ['정상','주의','생육불량','고사위험','고사'];
+  const BED_STATE_KEYS = ['양호','일부 불량','다수 불량','고사목 있음'];
+
+  function miniChipClass(v){ return 'mc-' + String(v).replace(/\s+/g, ''); }
+
+  function renderZoneCard(z){
+    const treeChips = TREE_GROWTH_KEYS
+      .filter(k => (z.treeGrowth[k] || 0) > 0)
+      .map(k => `<span class="mini-chip ${miniChipClass(k)}">${k} ${z.treeGrowth[k]}</span>`)
+      .join('');
+    const bedChips = BED_STATE_KEYS
+      .filter(k => (z.bedState[k] || 0) > 0)
+      .map(k => `<span class="mini-chip ${miniChipClass(k)}">${k} ${z.bedState[k]}</span>`)
+      .join('');
+
+    return `
+      <div class="zone-card">
+        <div><span class="zone-name">${z.zone}</span><span class="zone-total">수목 ${z.treeTotal}건 · 화단 ${z.bedTotal}건</span></div>
+        ${treeChips ? `<div class="zone-sub-label">수목조사</div><div class="zone-chips">${treeChips}</div>` : ''}
+        ${bedChips ? `<div class="zone-sub-label">화단조사</div><div class="zone-chips">${bedChips}</div>` : ''}
+      </div>
+    `;
+  }
+
   async function loadStats(){
     const url = apiUrlValue();
     const gridBox = document.getElementById('statsGrowthGrid');
     const listBox = document.getElementById('statsIndicatorList');
     const updatedBox = document.getElementById('statsUpdatedAt');
+    const zoneBox = document.getElementById('statsZoneList');
     if (!url){
       gridBox.innerHTML = '<div class="stats-cell"><div class="n">-</div><div class="l">설정 탭에서 API 주소를 먼저 입력해주세요</div></div>';
       listBox.innerHTML = '';
+      zoneBox.innerHTML = '';
       return;
     }
     gridBox.innerHTML = '<div class="stats-cell"><div class="n">…</div><div class="l">불러오는 중</div></div>';
     listBox.innerHTML = '';
+    zoneBox.innerHTML = '';
     try{
       const res = await fetch(url + (url.indexOf('?') > -1 ? '&' : '?') + 'action=stats');
       const json = await res.json();
@@ -1232,6 +1282,11 @@
           <span class="n">${i.value}</span>
         </div>
       `).join('');
+
+      const byZone = stats.byZone || [];
+      zoneBox.innerHTML = byZone.length
+        ? byZone.map(renderZoneCard).join('')
+        : '<div class="empty">등록된 동/구역이 없거나 조사 내역이 없습니다.</div>';
 
       if (stats.updatedAt){
         const d = new Date(stats.updatedAt);
