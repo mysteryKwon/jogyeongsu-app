@@ -725,9 +725,9 @@
   const STORAGE_KEY_ZONE = 'jogyeongsu_last_zone';
   const ZONE_CACHE_KEY = 'jogyeongsu_zone_cache'; // 오프라인 대비 캐시(서버가 원본)
   const THEME_KEY = 'jogyeongsu_theme';
-  const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycby86bNl2TiG-Kzzo-Owy8WqgNq0ao_yZQoyCmoM0IYVK085TDrZikeUK6XLcYvekVB6/exec'; // 배포 후 이 값에 기본 URL을 넣어두면 매번 설정할 필요가 없습니다.
+  const DEFAULT_API_URL = ''; // config.json도 못 불러오는 극히 드문 경우를 위한 최후의 기본값 (평소엔 비워둬도 됨)
 
-  const APP_VERSION = '3.1.0';
+  const APP_VERSION = '3.2.0';
 
   function todayStr(){
     const d = new Date();
@@ -759,6 +759,20 @@
 
   function apiUrlValue(){ return localStorage.getItem(STORAGE_KEY_URL) || DEFAULT_API_URL; }
 
+  // config.json에 적어둔 기본 API 주소를 가져옵니다. (없거나 이미 이 기기에 저장된 주소가 있으면 건드리지 않음)
+  // URL이 바뀌어도 index.html은 그대로 두고 config.json 한 줄만 고치면 되도록 분리했습니다.
+  async function loadConfigApiUrl(){
+    if (localStorage.getItem(STORAGE_KEY_URL)) return; // 이미 이 기기에 저장된 주소가 있으면 그대로 사용
+    try{
+      const res = await fetch('config.json', { cache: 'no-store' });
+      if (!res.ok) return;
+      const cfg = await res.json();
+      if (cfg.apiUrl) localStorage.setItem(STORAGE_KEY_URL, cfg.apiUrl);
+    }catch(e){
+      // config.json이 없거나 못 불러와도 앱은 정상 동작합니다 (설정 탭에서 수동 입력 가능)
+    }
+  }
+
   // ---------- PWA: 서비스워커 등록 (홈 화면 설치 지원) ----------
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
@@ -768,13 +782,15 @@
     });
   }
 
-  window.addEventListener('DOMContentLoaded', () => {
+  window.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('t_점검일').value = todayStr();
     document.getElementById('b_점검일').value = todayStr();
 
     initTheme();
 
     document.getElementById('feVersionTag').textContent = 'v' + APP_VERSION;
+
+    await loadConfigApiUrl(); // 이 기기에 저장된 주소가 없으면 config.json의 기본 주소를 먼저 채워넣음
 
     const savedUrl = apiUrlValue();
     document.getElementById('apiUrl').value = savedUrl;
