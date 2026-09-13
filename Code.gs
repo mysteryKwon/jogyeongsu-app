@@ -22,7 +22,7 @@
 
 // ===== 설정 =====
 // 백엔드(Apps Script) 버전 - 프론트엔드 index.html의 APP_VERSION과 비교해 설정 탭에 표시됩니다.
-const SCRIPT_VERSION = '3.8.0';
+const SCRIPT_VERSION = '3.9.0';
 
 // 사진을 저장할 구글 드라이브 폴더 이름 (없으면 자동 생성됨)
 const PHOTO_FOLDER_NAME = '조경수조사_사진';

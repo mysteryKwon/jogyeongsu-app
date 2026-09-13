@@ -84,9 +84,10 @@
   .status-dot.off{background:#E0A05B;}
   .subtitle{font-size:16px;color:#C9D8CB;margin-top:2px;}
   .header-round-badge{
-    display:inline-block; margin-top:6px; padding:3px 10px; border-radius:999px;
-    background:rgba(255,255,255,.18); color:#fff; font-size:15px; font-weight:800;
+    display:inline-block; margin-left:6px; padding:2px 9px; border-radius:999px;
+    background:rgba(255,255,255,.18); color:#fff; font-size:14.5px; font-weight:800;
   }
+  .header-round-badge:empty{ display:none; }
   .header-round-badge.warn{ background:rgba(224,160,91,.35); }
 
   nav.tabs{
@@ -306,8 +307,7 @@
   <div class="title-row">
     <h1>🌳 조경수 실태조사<span class="status-dot off" id="statusDot"></span><span class="version-badge" id="headerVersionBadge">v-</span></h1>
   </div>
-  <div class="subtitle" id="statusText">API 연결 확인 필요 · 설정 탭에서 주소 입력</div>
-  <div class="header-round-badge" id="headerRoundBadge"></div>
+  <div class="subtitle"><span id="statusText">API 연결 확인 필요 · 설정 탭에서 주소 입력</span><span class="header-round-badge" id="headerRoundBadge"></span></div>
   <nav class="tabs">
     <button class="tab-btn active" data-tab="tree">수목조사</button>
     <button class="tab-btn" data-tab="bed">화단조사</button>
@@ -782,7 +782,7 @@
   const THEME_KEY = 'jogyeongsu_theme';
   const DEFAULT_API_URL = ''; // config.json도 못 불러오는 극히 드문 경우를 위한 최후의 기본값 (평소엔 비워둬도 됨)
 
-  const APP_VERSION = '3.8.0';
+  const APP_VERSION = '3.9.0';
 
   function todayStr(){
     const d = new Date();
@@ -1061,10 +1061,12 @@
     const headerBadge = document.getElementById('headerRoundBadge');
     if (headerBadge){
       if (y && r){
-        headerBadge.textContent = `📅 ${y}년 ${r}`;
+        const info = loadRoundCache().find(rr => rr.year === y && rr.round === r);
+        const period = info && (info.start || info.end) ? ` (${info.start || '?'} ~ ${info.end || '?'})` : '';
+        headerBadge.textContent = `📅 ${y}년 ${r}${period}`;
         headerBadge.classList.remove('warn');
       } else {
-        headerBadge.textContent = '⚠️ 설정 탭에서 연도/차수 선택 필요';
+        headerBadge.textContent = '⚠️ 연도/차수 선택 필요';
         headerBadge.classList.add('warn');
       }
     }
