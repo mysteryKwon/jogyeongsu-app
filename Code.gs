@@ -12,7 +12,9 @@
  *  - 사진이 첨부된 경우 구글 드라이브 폴더에 저장 후, 공유 링크를 시트에 기록
  *  - 사진관리 시트에도 자동으로 사진 정보를 추가
  *  - 동/구역 목록은 "동구역목록" 시트에 저장되어 모든 사용자(기기)가 공유합니다
- *  - doGet(?action=zones)로 동/구역 목록 조회, 버전 정보(SCRIPT_VERSION)도 함께 반환
+ *  - 연도/차수 목록은 "연도차수목록" 시트에 저장되어 모든 사용자(기기)가 공유합니다 (설정 탭에서 등록/선택)
+ *  - doGet(?action=zones)로 동/구역 목록 조회, doGet(?action=rounds)로 연도/차수 목록 조회
+ *  - doGet(?action=stats&year=YYYY&round=1차)로 해당 연도/차수만 필터링한 통계 조회
  *
  * Code.gs를 수정한 뒤에는 반드시
  * [배포 → 배포 관리 → 편집(연필) → 새 버전으로 배포] 를 다시 실행해야 반영됩니다.
@@ -20,7 +22,7 @@
 
 // ===== 설정 =====
 // 백엔드(Apps Script) 버전 - 프론트엔드 index.html의 APP_VERSION과 비교해 설정 탭에 표시됩니다.
-const SCRIPT_VERSION = '3.5.0';
+const SCRIPT_VERSION = '3.7.0';
 
 // 사진을 저장할 구글 드라이브 폴더 이름 (없으면 자동 생성됨)
 const PHOTO_FOLDER_NAME = '조경수조사_사진';
@@ -30,6 +32,7 @@ const SHEET_TREE = '수목실태조사';
 const SHEET_BED = '화단구역조사';
 const SHEET_PHOTO = '사진관리';
 const SHEET_ZONES = '동구역목록'; // 없으면 자동 생성됩니다
+const SHEET_ROUNDS = '연도차수목록'; // 없으면 자동 생성됩니다
 
 // 각 시트의 열 순서 (헤더와 동일한 순서로 값이 채워집니다)
 const COLS_TREE = ['No', '점검일', '동/구역', '상세 위치', '수종', '수량', '생육상태',
@@ -39,25 +42,6 @@ const COLS_TREE = ['No', '점검일', '동/구역', '상세 위치', '수종', '
 const COLS_BED = ['No', '점검일', '동/구역', '화단/구역 위치', '토양수분', '토양다짐',
   '표토상태', '낙엽상태', '멀칭', '배수상태', '잔디·지피 생육', '관수시설',
   '수목 전반상태', '주요 문제', '우선 개선사항', '사진번호', '비고', '연도', '차수'];
-
-// ===== 연도별 조사 차수 정의 (자유롭게 편집 가능) =====
-// 아래 표에 연도와 그 해의 차수·조사기간을 추가/수정하세요. 기간은 화면에 참고용으로 표시되며,
-// 저장을 막지는 않습니다 (조사자가 연도/차수를 직접 선택합니다).
-const SURVEY_ROUNDS = {
-  '2026': [
-    { round: '1차', start: '2026-03-01', end: '2026-05-31' },
-    { round: '2차', start: '2026-09-01', end: '2026-11-30' }
-  ]
-  // 예시) '2027': [ { round: '1차', start: '2027-03-01', end: '2027-05-31' } ]
-};
-
-function getSurveyRoundsConfig() {
-  const years = Object.keys(SURVEY_ROUNDS).sort((a, b) => Number(b) - Number(a)); // 최신 연도가 먼저 오도록 정렬
-  return years.map(y => ({
-    year: y,
-    rounds: SURVEY_ROUNDS[y].map(r => ({ round: r.round, start: r.start, end: r.end }))
-  }));
-}
 
 const COLS_PHOTO = ['사진번호', '촬영일', '동/구역', '위치', '대상 수목/화단',
   '촬영구분', '파일명/구글드라이브 링크', '설명', '재촬영 예정일'];
@@ -72,7 +56,7 @@ function doGet(e) {
       return jsonOut({ ok: true, zones: getZoneList(ss), version: SCRIPT_VERSION });
     }
     if (action === 'rounds') {
-      return jsonOut({ ok: true, years: getSurveyRoundsConfig(), version: SCRIPT_VERSION });
+      return jsonOut({ ok: true, rounds: getRoundList(ss), version: SCRIPT_VERSION });
     }
     if (action === 'list') {
       const type = e.parameter.type; // 'tree' | 'bed'
@@ -80,17 +64,11 @@ function doGet(e) {
       return jsonOut(listSurveyRows(ss, type, limit));
     }
     if (action === 'stats') {
-      const existingStatSheet = ss.getSheetByName('자동통계');
-      const needsFullRecompute = !existingStatSheet
-        || !existingStatSheet.getRange(ZONE_TABLE_HEADER_ROW, 1).getValue(); // 구버전 시트(구역별 집계 표 없음) 감지
-      if (needsFullRecompute) {
-        // 통계 시트가 아직 없거나, 예전 버전이라 "구역별 집계" 표가 없을 때만 전체 데이터를 계산합니다.
-        const stats = computeStats(ss);
-        writeStatsToSheet(ss, stats);
-        return jsonOut({ ok: true, stats: stats, version: SCRIPT_VERSION });
-      }
-      // 이후에는 저장·수정·삭제 시점에 이미 갱신해둔 값을 그대로 읽기만 해서 빠르게 응답합니다.
-      const stats = readStatsFromSheet(existingStatSheet);
+      // 설정 탭에서 선택한 연도/차수로 필터링합니다. (지정하지 않으면 전체)
+      const year = e.parameter.year || '';
+      const round = e.parameter.round || '';
+      const stats = computeStats(ss, year, round);
+      writeStatsToSheet(ss, stats, year, round);
       return jsonOut({ ok: true, stats: stats, version: SCRIPT_VERSION });
     }
   } catch (err) {
@@ -103,7 +81,7 @@ function doGet(e) {
 function doPost(e) {
   try {
     const body = JSON.parse(e.postData.contents);
-    const type = body.type; // 'tree'|'bed'|'tree_update'|'bed_update'|'tree_delete'|'bed_delete'|'zone_add'|'zone_remove'
+    const type = body.type; // 'tree'|'bed'|'tree_update'|'bed_update'|'tree_delete'|'bed_delete'|'zone_add'|'zone_remove'|'round_add'|'round_remove'
     const data = body.data || {};
     const ss = SpreadsheetApp.getActiveSpreadsheet();
 
@@ -115,6 +93,16 @@ function doPost(e) {
     if (type === 'zone_remove') {
       const zones = removeZoneFromSheet(ss, (data.name || '').trim());
       return jsonOut({ ok: true, zones: zones, version: SCRIPT_VERSION });
+    }
+
+    // ---- 연도/차수 목록 관리 ----
+    if (type === 'round_add') {
+      const rounds = addRoundToSheet(ss, String(data.year || '').trim(), String(data.round || '').trim(), data.start || '', data.end || '');
+      return jsonOut({ ok: true, rounds: rounds, version: SCRIPT_VERSION });
+    }
+    if (type === 'round_remove') {
+      const rounds = removeRoundFromSheet(ss, String(data.year || '').trim(), String(data.round || '').trim());
+      return jsonOut({ ok: true, rounds: rounds, version: SCRIPT_VERSION });
     }
 
     // ---- 조사 데이터 생성/수정/삭제 ----
@@ -186,7 +174,7 @@ function createSurveyRow(ss, type, data, photos) {
 
   const row = cols.map(c => data[c] !== undefined ? data[c] : '');
   sheet.appendRow(row);
-  writeStatsToSheet(ss, computeStats(ss));
+  writeStatsToSheet(ss, computeStats(ss, data['연도'], data['차수']), data['연도'], data['차수']);
 
   return { ok: true, no: nextNo, photoNumber: '', version: SCRIPT_VERSION };
 }
@@ -202,16 +190,23 @@ function updateSurveyRow(ss, type, data, photos) {
   if (rowIndex === -1) throw new Error('해당 No(' + no + ') 항목을 찾을 수 없습니다. 삭제되었거나 새로고침이 필요할 수 있습니다.');
 
   const photoColIdx = cols.indexOf('사진번호');
+  const yearColIdx = cols.indexOf('연도');
+  const roundColIdx = cols.indexOf('차수');
   const existingRow = sheet.getRange(rowIndex, 1, 1, cols.length).getValues()[0];
   const existingPhotoNo = photoColIdx > -1 ? (existingRow[photoColIdx] || '') : '';
+  const existingYear = yearColIdx > -1 ? (existingRow[yearColIdx] || '') : '';
+  const existingRound = roundColIdx > -1 ? (existingRow[roundColIdx] || '') : '';
 
   // 사진은 이 함수에서 처리하지 않습니다 (attachPhotos에서 별도로 처리). 기존 사진번호는 그대로 유지합니다.
+  // 연도/차수는 수정 시 바뀌지 않도록(잘못 재분류되지 않도록) 기존 값을 그대로 유지합니다.
   data['No'] = no;
   data['사진번호'] = existingPhotoNo;
+  data['연도'] = existingYear;
+  data['차수'] = existingRound;
 
   const row = cols.map(c => data[c] !== undefined ? data[c] : '');
   sheet.getRange(rowIndex, 1, 1, cols.length).setValues([row]);
-  writeStatsToSheet(ss, computeStats(ss));
+  writeStatsToSheet(ss, computeStats(ss, existingYear, existingRound), existingYear, existingRound);
 
   return { ok: true, no: no, photoNumber: existingPhotoNo, version: SCRIPT_VERSION };
 }
@@ -253,7 +248,7 @@ function attachPhotos(ss, data, photos) {
 }
 
 function deleteSurveyRow(ss, type, data) {
-  const { sheetName } = sheetAndColsFor(type);
+  const { sheetName, cols } = sheetAndColsFor(type);
   const sheet = ss.getSheetByName(sheetName);
   if (!sheet) throw new Error('시트를 찾을 수 없습니다: ' + sheetName);
 
@@ -262,8 +257,14 @@ function deleteSurveyRow(ss, type, data) {
   const rowIndex = findRowByNo(sheet, no);
   if (rowIndex === -1) throw new Error('해당 No(' + no + ') 항목을 찾을 수 없습니다. 이미 삭제되었을 수 있습니다.');
 
+  const yearColIdx = cols.indexOf('연도');
+  const roundColIdx = cols.indexOf('차수');
+  const existingRow = sheet.getRange(rowIndex, 1, 1, cols.length).getValues()[0];
+  const existingYear = yearColIdx > -1 ? (existingRow[yearColIdx] || '') : '';
+  const existingRound = roundColIdx > -1 ? (existingRow[roundColIdx] || '') : '';
+
   sheet.deleteRow(rowIndex);
-  writeStatsToSheet(ss, computeStats(ss));
+  writeStatsToSheet(ss, computeStats(ss, existingYear, existingRound), existingYear, existingRound);
 
   return { ok: true, no: no, version: SCRIPT_VERSION };
 }
@@ -294,6 +295,71 @@ function listSurveyRows(ss, type, limit) {
     .slice(0, limit);
 
   return { ok: true, items: items, version: SCRIPT_VERSION };
+}
+
+// ===== 연도/차수 목록 (구글시트 저장, 앱에서 직접 등록/삭제) =====
+function ensureRoundSheet(ss) {
+  let sheet = ss.getSheetByName(SHEET_ROUNDS);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_ROUNDS);
+    sheet.appendRow(['연도', '차수', '시작일', '종료일', '등록일']);
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+function getRoundList(ss) {
+  const sheet = ensureRoundSheet(ss);
+  const last = sheet.getLastRow();
+  if (last < 2) return [];
+  const values = sheet.getRange(2, 1, last - 1, 4).getValues();
+  return values
+    .filter(r => r[0] !== '' && r[1] !== '')
+    .map(r => ({
+      year: String(r[0]),
+      round: String(r[1]),
+      start: r[2] ? formatDateForConfig(r[2]) : '',
+      end: r[3] ? formatDateForConfig(r[3]) : ''
+    }))
+    .sort((a, b) => {
+      const y = Number(b.year) - Number(a.year); // 최신 연도가 먼저
+      return y !== 0 ? y : String(a.round).localeCompare(String(b.round), 'ko');
+    });
+}
+
+function formatDateForConfig(v) {
+  if (Object.prototype.toString.call(v) === '[object Date]') {
+    return Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  }
+  return String(v).slice(0, 10);
+}
+
+function addRoundToSheet(ss, year, round, start, end) {
+  if (!year || !round) throw new Error('연도와 차수를 모두 입력해주세요.');
+  const sheet = ensureRoundSheet(ss);
+  const existing = getRoundList(ss);
+  const dup = existing.some(r => r.year === year && r.round === round);
+  if (!dup) {
+    const today = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    sheet.appendRow([year, round, start || '', end || '', today]);
+  }
+  return getRoundList(ss);
+}
+
+function removeRoundFromSheet(ss, year, round) {
+  if (!year || !round) throw new Error('연도와 차수를 모두 입력해주세요.');
+  const sheet = ensureRoundSheet(ss);
+  const last = sheet.getLastRow();
+  if (last >= 2) {
+    const values = sheet.getRange(2, 1, last - 1, 2).getValues();
+    for (let i = 0; i < values.length; i++) {
+      if (String(values[i][0]) === year && String(values[i][1]) === round) {
+        sheet.deleteRow(i + 2);
+        break;
+      }
+    }
+  }
+  return getRoundList(ss);
 }
 
 // ===== 동/구역 목록 (구글시트 저장) =====
@@ -397,9 +463,10 @@ const STAT_INDICATOR_LABELS = ['조사 건수', '고사위험+고사', '긴급�
   '토양 매우건조', '토양다짐 의심', '화단 조사구역'];
 const BED_STATE_ORDER = ['양호', '일부 불량', '다수 불량', '고사목 있음'];
 
-function computeStats(ss) {
+function computeStats(ss, filterYear, filterRound) {
   const tree = ss.getSheetByName(SHEET_TREE);
   const bed = ss.getSheetByName(SHEET_BED);
+  const hasFilter = !!(filterYear && filterRound);
 
   const growth = {}; STAT_GROWTH_ORDER.forEach(k => growth[k] = 0);
   let treeCount = 0, urgent = 0, veryDry = 0, compact = 0;
@@ -424,10 +491,11 @@ function computeStats(ss) {
     const idx = name => COLS_TREE.indexOf(name);
     const stateIdx = idx('생육상태'), riskIdx = idx('고사위험'),
           moistIdx = idx('토양수분'), soilIdx = idx('토양상태'), noIdx = idx('No'),
-          zoneIdx = idx('동/구역');
+          zoneIdx = idx('동/구역'), yearIdx = idx('연도'), roundIdx = idx('차수');
 
     data.forEach(r => {
       if (r[noIdx] === '' || r[noIdx] === null) return; // 빈 행 제외
+      if (hasFilter && (String(r[yearIdx]) !== String(filterYear) || String(r[roundIdx]) !== String(filterRound))) return;
       treeCount++;
       const st = r[stateIdx];
       if (growth[st] !== undefined) growth[st]++;
@@ -445,10 +513,12 @@ function computeStats(ss) {
   let bedCount = 0;
   if (bed && bed.getLastRow() > 1) {
     const idx = name => COLS_BED.indexOf(name);
-    const noIdx = idx('No'), zoneIdx = idx('동/구역'), stateIdx = idx('수목 전반상태');
+    const noIdx = idx('No'), zoneIdx = idx('동/구역'), stateIdx = idx('수목 전반상태'),
+          yearIdx = idx('연도'), roundIdx = idx('차수');
     const data = bed.getRange(2, 1, bed.getLastRow() - 1, COLS_BED.length).getValues();
     data.forEach(r => {
       if (r[noIdx] === '' || r[noIdx] === null) return;
+      if (hasFilter && (String(r[yearIdx]) !== String(filterYear) || String(r[roundIdx]) !== String(filterRound))) return;
       bedCount++;
       const z = r[zoneIdx] || '(미지정)';
       const ze = zoneEntry(z);
@@ -465,6 +535,8 @@ function computeStats(ss) {
 
   return {
     updatedAt: new Date().toISOString(),
+    filterYear: filterYear || '',
+    filterRound: filterRound || '',
     growth: STAT_GROWTH_ORDER.map(k => ({ label: k, count: growth[k] })),
     indicators: [
       { label: STAT_INDICATOR_LABELS[0], value: treeCount },
@@ -484,7 +556,7 @@ const ZONE_TABLE_MAX_ROWS = 300;
 const ZONE_TABLE_COLS = ['동/구역', '수목 건수', '정상', '주의', '생육불량', '고사위험', '고사',
   '화단 건수', '양호', '일부 불량', '다수 불량', '고사목 있음'];
 
-function writeStatsToSheet(ss, stats) {
+function writeStatsToSheet(ss, stats, filterYear, filterRound) {
   try {
     const stat = ensureStatsSheet(ss);
     stat.getRange(4, 1, STAT_GROWTH_ORDER.length, 1)
@@ -495,11 +567,12 @@ function writeStatsToSheet(ss, stats) {
       .setValues(STAT_INDICATOR_LABELS.map(k => [k])); // 라벨도 항상 최신 상태로 맞춰줌
     stat.getRange(4, 5, stats.indicators.length, 1)
       .setValues(stats.indicators.map(i => [i.value]));
-    stat.getRange('G1').setValue('마지막 갱신: ' + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm'));
+    const scopeLabel = (filterYear && filterRound) ? (filterYear + '년 ' + filterRound + ' 기준') : '전체 기간 기준';
+    stat.getRange('G1').setValue(scopeLabel + ' · 마지막 갱신: ' + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm'));
     stat.getRange('I1').setValue(stats.updatedAt); // 프로그램에서 다시 읽을 때 쓰는 원본 타임스탬프(숨김용)
 
     // 구역별 집계 표 (동/화단 조사를 동/구역별로 구분)
-    stat.getRange(ZONE_TABLE_HEADER_ROW - 1, 1).setValue('구역별 집계').setFontWeight('bold').setFontSize(13);
+    stat.getRange(ZONE_TABLE_HEADER_ROW - 1, 1).setValue('구역별 집계 (' + scopeLabel + ')').setFontWeight('bold').setFontSize(13);
     stat.getRange(ZONE_TABLE_HEADER_ROW, 1, 1, ZONE_TABLE_COLS.length)
       .setValues([ZONE_TABLE_COLS]).setFontWeight('bold');
     // 구역 수가 줄어들 때를 대비해 매번 넓게 지운 뒤 다시 씀
@@ -517,31 +590,6 @@ function writeStatsToSheet(ss, stats) {
   } catch (err) {
     // 통계 시트 갱신 실패는 조사 저장 자체를 막지 않도록 조용히 무시
   }
-}
-
-// 이미 시트에 계산되어 있는 통계 값을 "다시 계산하지 않고" 그대로 읽기만 함 (통계 탭 로딩 속도 개선용)
-function readStatsFromSheet(stat) {
-  const growthCounts = stat.getRange(4, 2, STAT_GROWTH_ORDER.length, 1).getValues();
-  const growth = STAT_GROWTH_ORDER.map((label, i) => ({ label: label, count: Number(growthCounts[i][0]) || 0 }));
-
-  const indicatorValues = stat.getRange(4, 5, STAT_INDICATOR_LABELS.length, 1).getValues();
-  const indicators = STAT_INDICATOR_LABELS.map((label, i) => ({ label: label, value: Number(indicatorValues[i][0]) || 0 }));
-
-  let updatedAt = stat.getRange('I1').getValue();
-  updatedAt = updatedAt ? String(updatedAt) : new Date().toISOString();
-
-  const zoneValues = stat.getRange(ZONE_TABLE_DATA_ROW, 1, ZONE_TABLE_MAX_ROWS, ZONE_TABLE_COLS.length).getValues();
-  const byZone = zoneValues
-    .filter(r => r[0] !== '' && r[0] !== null)
-    .map(r => ({
-      zone: r[0],
-      treeTotal: Number(r[1]) || 0,
-      treeGrowth: { 정상: Number(r[2]) || 0, 주의: Number(r[3]) || 0, 생육불량: Number(r[4]) || 0, 고사위험: Number(r[5]) || 0, 고사: Number(r[6]) || 0 },
-      bedTotal: Number(r[7]) || 0,
-      bedState: { '양호': Number(r[8]) || 0, '일부 불량': Number(r[9]) || 0, '다수 불량': Number(r[10]) || 0, '고사목 있음': Number(r[11]) || 0 }
-    }));
-
-  return { updatedAt: updatedAt, growth: growth, indicators: indicators, byZone: byZone };
 }
 
 function ensureStatsSheet(ss) {

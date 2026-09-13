@@ -339,17 +339,6 @@
           <input type="text" id="t_동구역직접입력" placeholder="동/구역명을 입력 후 Enter" style="display:none;margin-top:8px;">
         </div>
       </div>
-      <div class="row2">
-        <div class="field">
-          <label>연도</label>
-          <select id="t_연도" onchange="handleYearChange('t')"></select>
-        </div>
-        <div class="field">
-          <label>차수</label>
-          <select id="t_차수" onchange="updateRoundHint('t')"></select>
-        </div>
-      </div>
-      <div class="hint" id="t_roundHint"></div>
       <div class="field">
         <label>상세 위치</label>
         <input type="text" id="t_상세위치" placeholder="예: 놀이터 옆 화단 3번목">
@@ -533,17 +522,6 @@
           <input type="text" id="b_동구역직접입력" placeholder="동/구역명을 입력 후 Enter" style="display:none;margin-top:8px;">
         </div>
       </div>
-      <div class="row2">
-        <div class="field">
-          <label>연도</label>
-          <select id="b_연도" onchange="handleYearChange('b')"></select>
-        </div>
-        <div class="field">
-          <label>차수</label>
-          <select id="b_차수" onchange="updateRoundHint('b')"></select>
-        </div>
-      </div>
-      <div class="hint" id="b_roundHint"></div>
       <div class="field">
         <label>화단/구역 위치 <span class="req">*</span></label>
         <input type="text" id="b_위치" placeholder="예: 정문 앞 원형화단">
@@ -705,6 +683,39 @@
       </div>
     </div>
     <div class="card">
+      <div class="section-label">연도/차수 (전체 적용)</div>
+      <div class="row2">
+        <div class="field">
+          <label>연도</label>
+          <select id="settingsYear" onchange="handleSettingsYearChange()"></select>
+        </div>
+        <div class="field">
+          <label>차수</label>
+          <select id="settingsRound" onchange="handleSettingsRoundChange()"></select>
+        </div>
+      </div>
+      <div class="hint" id="settingsRoundHint"></div>
+      <div class="chip" id="activeRoundBadge" style="margin:8px 0 14px;display:inline-block;"></div>
+
+      <div class="field">
+        <label>새 연도/차수 등록</label>
+        <div class="row2">
+          <input type="number" id="newRoundYear" placeholder="예: 2027" inputmode="numeric">
+          <input type="text" id="newRoundName" placeholder="예: 1차">
+        </div>
+        <div class="row2" style="margin-top:8px;">
+          <input type="date" id="newRoundStart">
+          <input type="date" id="newRoundEnd">
+        </div>
+        <button type="button" class="btn-sm" style="width:100%;margin-top:8px;" onclick="addRound()">등록</button>
+      </div>
+      <div id="roundManageList" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;"></div>
+      <div class="settings-note" style="margin-top:10px;">
+        여기서 고른 연도/차수가 <b>수목조사·화단조사 저장 시 자동으로 기록</b>되고, <b>통계 탭도 이 연도/차수 데이터만</b> 보여줍니다.
+        시작일/종료일은 참고용이며 비워둬도 됩니다.
+      </div>
+    </div>
+    <div class="card">
       <div class="section-label">화면 테마</div>
       <div class="theme-toggle" id="themeToggle">
         <button type="button" data-theme-choice="light">☀️ 라이트</button>
@@ -716,14 +727,12 @@
     <div class="card">
       <div class="section-label">Google Apps Script 주소</div>
       <div class="field">
-        <label>웹앱 URL</label>
+        <label>웹앱 URL (이 기기 전용 재정의, 선택)</label>
         <input type="text" id="apiUrl" class="field-url" placeholder="https://script.google.com/macros/s/xxxx/exec">
       </div>
       <button type="button" class="btn-sm" style="width:100%;margin-bottom:8px;" onclick="saveApiUrl()">저장 및 연결 확인</button>
-      <div class="settings-note">
-        설치가이드.md의 안내대로 Apps Script를 배포한 뒤 발급받은 URL을 여기에 붙여넣고 저장하세요.<br>
-        저장한 주소는 이 스마트폰(브라우저)에만 저장되며, 다음에 접속할 때도 자동으로 사용됩니다.
-      </div>
+      <button type="button" class="btn-sm" style="width:100%;margin-bottom:8px;" onclick="clearApiUrlOverride()">이 기기 재정의 지우고 config.json 값 사용</button>
+      <div class="settings-note" id="apiUrlSourceNote"></div>
     </div>
     <div class="card">
       <div class="section-label">앱 정보 및 버전</div>
@@ -767,7 +776,7 @@
   const THEME_KEY = 'jogyeongsu_theme';
   const DEFAULT_API_URL = ''; // config.json도 못 불러오는 극히 드문 경우를 위한 최후의 기본값 (평소엔 비워둬도 됨)
 
-  const APP_VERSION = '3.5.0';
+  const APP_VERSION = '3.7.0';
 
   function todayStr(){
     const d = new Date();
@@ -799,18 +808,52 @@
 
   function apiUrlValue(){ return localStorage.getItem(STORAGE_KEY_URL) || DEFAULT_API_URL; }
 
-  // config.json에 적어둔 기본 API 주소를 가져옵니다. (없거나 이미 이 기기에 저장된 주소가 있으면 건드리지 않음)
-  // URL이 바뀌어도 index.html은 그대로 두고 config.json 한 줄만 고치면 되도록 분리했습니다.
+  // config.json에 적어둔 기본 API 주소를 가져옵니다. 이 기기에 별도로 저장된 주소(재정의)가 있으면
+  // 그걸 우선 사용하되, config.json 값은 "재정의 지우기" 버튼을 위해 항상 따로 기억해둡니다.
+  let configApiUrl = '';
   async function loadConfigApiUrl(){
-    if (localStorage.getItem(STORAGE_KEY_URL)) return; // 이미 이 기기에 저장된 주소가 있으면 그대로 사용
     try{
       const res = await fetch('config.json', { cache: 'no-store' });
-      if (!res.ok) return;
-      const cfg = await res.json();
-      if (cfg.apiUrl) localStorage.setItem(STORAGE_KEY_URL, cfg.apiUrl);
+      if (res.ok){
+        const cfg = await res.json();
+        configApiUrl = cfg.apiUrl || '';
+      }
     }catch(e){
-      // config.json이 없거나 못 불러와도 앱은 정상 동작합니다 (설정 탭에서 수동 입력 가능)
+      // config.json이 없거나 못 불러와도 앱은 정상 동작합니다 (아래에서 수동 입력 가능)
     }
+    if (!localStorage.getItem(STORAGE_KEY_URL) && configApiUrl){
+      localStorage.setItem(STORAGE_KEY_URL, configApiUrl);
+    }
+    updateApiUrlSourceNote();
+  }
+
+  function updateApiUrlSourceNote(){
+    const note = document.getElementById('apiUrlSourceNote');
+    if (!note) return;
+    const saved = localStorage.getItem(STORAGE_KEY_URL) || '';
+    if (configApiUrl && saved && saved !== configApiUrl){
+      note.innerHTML = '⚠️ 이 기기는 config.json 기본 주소와 <b>다른 주소</b>를 사용 중입니다.';
+    } else if (configApiUrl){
+      note.innerHTML = 'config.json에 등록된 기본 주소를 사용 중입니다. 이 기기에서만 다른 주소를 쓰려면 위에 입력 후 저장하세요.';
+    } else {
+      note.innerHTML = '설치가이드.md의 안내대로 Apps Script를 배포한 뒤 발급받은 URL을 여기에 붙여넣고 저장하세요. 저장한 주소는 이 스마트폰(브라우저)에만 적용됩니다.';
+    }
+  }
+
+  function clearApiUrlOverride(){
+    localStorage.removeItem(STORAGE_KEY_URL);
+    if (configApiUrl){
+      localStorage.setItem(STORAGE_KEY_URL, configApiUrl);
+      document.getElementById('apiUrl').value = configApiUrl;
+      showToast('config.json 기본 주소로 되돌렸습니다.');
+    } else {
+      document.getElementById('apiUrl').value = '';
+      showToast('config.json에 등록된 기본 주소가 없습니다.', true);
+    }
+    updateApiUrlSourceNote();
+    refreshStatus();
+    syncZonesFromServer();
+    syncRoundsFromServer();
   }
 
   // ---------- PWA: 서비스워커 등록 (홈 화면 설치 지원) ----------
@@ -839,7 +882,7 @@
     // 서버 응답 전까지는 캐시된 목록으로 우선 렌더링
     renderZoneSelects(savedZone);
     renderZoneManageList();
-    renderYearSelects();
+    renderRoundSettingsUI();
 
     refreshStatus();
     syncZonesFromServer(savedZone);
@@ -907,95 +950,176 @@
   }
   function saveZoneCache(list){ localStorage.setItem(ZONE_CACHE_KEY, JSON.stringify(list)); }
 
-  // ---------- 연도/차수 (Code.gs의 SURVEY_ROUNDS 표에서 불러옴) ----------
+  // ---------- 연도/차수 (설정 탭에서 전체 적용, 구글시트 "연도차수목록"에 저장) ----------
   function loadRoundCache(){
     try{ return JSON.parse(localStorage.getItem(ROUND_CACHE_KEY)) || []; }
     catch(e){ return []; }
   }
-  function saveRoundCache(years){ localStorage.setItem(ROUND_CACHE_KEY, JSON.stringify(years)); }
+  function saveRoundCache(list){ localStorage.setItem(ROUND_CACHE_KEY, JSON.stringify(list)); }
+
+  function currentYear(){ return localStorage.getItem(STORAGE_KEY_YEAR) || ''; }
+  function currentRound(){ return localStorage.getItem(STORAGE_KEY_ROUND) || ''; }
 
   async function syncRoundsFromServer(){
     const url = apiUrlValue();
-    if (!url) { renderYearSelects(); return; }
+    if (!url) { renderRoundSettingsUI(); return; }
     try{
       const sep = url.includes('?') ? '&' : '?';
       const res = await fetch(url + sep + 'action=rounds', { method: 'GET' });
       const json = await res.json();
       if (json.ok){
-        saveRoundCache(json.years || []);
-        renderYearSelects();
+        saveRoundCache(json.rounds || []);
+        renderRoundSettingsUI();
       }
     }catch(err){
-      renderYearSelects(); // 오프라인이면 캐시된 목록으로 표시
+      renderRoundSettingsUI(); // 오프라인이면 캐시된 목록으로 표시
     }
   }
 
-  function renderYearSelects(){
-    const years = loadRoundCache();
-    const savedYear = localStorage.getItem(STORAGE_KEY_YEAR) || '';
-    ['t','b'].forEach(prefix => {
-      const sel = document.getElementById(prefix + '_연도');
-      const prevValue = sel.value || savedYear;
-      sel.innerHTML = '';
-      if (years.length === 0){
-        const opt = document.createElement('option');
-        opt.value = ''; opt.textContent = '연도 정보 없음';
-        sel.appendChild(opt);
-      } else {
-        years.forEach(y => {
-          const opt = document.createElement('option');
-          opt.value = y.year; opt.textContent = y.year + '년';
-          sel.appendChild(opt);
-        });
-      }
-      const hasPrev = years.some(y => y.year === prevValue);
-      sel.value = hasPrev ? prevValue : (years[0] ? years[0].year : '');
-      renderRoundSelect(prefix);
-    });
+  // 설정 탭의 연도/차수 선택 드롭다운 + 등록 목록을 그립니다.
+  function renderRoundSettingsUI(){
+    const rounds = loadRoundCache(); // [{year, round, start, end}]
+    const years = [...new Set(rounds.map(r => r.year))].sort((a, b) => Number(b) - Number(a));
+
+    const yearSel = document.getElementById('settingsYear');
+    const savedYear = currentYear();
+    yearSel.innerHTML = '';
+    if (years.length === 0){
+      yearSel.appendChild(new Option('등록된 연도 없음', ''));
+    } else {
+      years.forEach(y => yearSel.appendChild(new Option(y + '년', y)));
+    }
+    yearSel.value = years.includes(savedYear) ? savedYear : (years[0] || '');
+
+    renderRoundSettingsRoundSelect();
+    renderRoundManageList();
   }
 
-  function renderRoundSelect(prefix){
-    const years = loadRoundCache();
-    const yearSel = document.getElementById(prefix + '_연도');
-    const roundSel = document.getElementById(prefix + '_차수');
-    const hint = document.getElementById(prefix + '_roundHint');
-    const yearInfo = years.find(y => y.year === yearSel.value);
-    const rounds = yearInfo ? yearInfo.rounds : [];
-    const savedRound = localStorage.getItem(STORAGE_KEY_ROUND) || '';
-    const prevValue = roundSel.value || savedRound;
+  function renderRoundSettingsRoundSelect(){
+    const rounds = loadRoundCache();
+    const yearSel = document.getElementById('settingsYear');
+    const roundSel = document.getElementById('settingsRound');
+    const hint = document.getElementById('settingsRoundHint');
+    const roundsForYear = rounds.filter(r => r.year === yearSel.value);
+    const savedRound = currentRound();
 
     roundSel.innerHTML = '';
-    if (rounds.length === 0){
-      const opt = document.createElement('option');
-      opt.value = ''; opt.textContent = '차수 정보 없음';
-      roundSel.appendChild(opt);
+    if (roundsForYear.length === 0){
+      roundSel.appendChild(new Option('등록된 차수 없음', ''));
       hint.textContent = '';
+      applyCurrentRoundSelection();
       return;
     }
-    rounds.forEach(r => {
-      const opt = document.createElement('option');
-      opt.value = r.round; opt.textContent = r.round;
-      roundSel.appendChild(opt);
-    });
-    const hasPrev = rounds.some(r => r.round === prevValue);
-    roundSel.value = hasPrev ? prevValue : rounds[0].round;
-    updateRoundHint(prefix);
+    roundsForYear.forEach(r => roundSel.appendChild(new Option(r.round, r.round)));
+    const hasSaved = roundsForYear.some(r => r.round === savedRound);
+    roundSel.value = hasSaved ? savedRound : roundsForYear[0].round;
+    updateSettingsRoundHint();
+    applyCurrentRoundSelection();
   }
 
-  function updateRoundHint(prefix){
-    const years = loadRoundCache();
-    const yearSel = document.getElementById(prefix + '_연도');
-    const roundSel = document.getElementById(prefix + '_차수');
-    const hint = document.getElementById(prefix + '_roundHint');
-    const yearInfo = years.find(y => y.year === yearSel.value);
-    const roundInfo = yearInfo && yearInfo.rounds.find(r => r.round === roundSel.value);
-    hint.textContent = roundInfo && (roundInfo.start || roundInfo.end)
-      ? `조사기간: ${roundInfo.start || '?'} ~ ${roundInfo.end || '?'}`
+  function updateSettingsRoundHint(){
+    const rounds = loadRoundCache();
+    const yearSel = document.getElementById('settingsYear');
+    const roundSel = document.getElementById('settingsRound');
+    const hint = document.getElementById('settingsRoundHint');
+    const info = rounds.find(r => r.year === yearSel.value && r.round === roundSel.value);
+    hint.textContent = info && (info.start || info.end)
+      ? `조사기간: ${info.start || '?'} ~ ${info.end || '?'}`
       : '';
   }
 
-  function handleYearChange(prefix){
-    renderRoundSelect(prefix);
+  // 현재 화면에서 선택된 연도/차수를 "전체 적용값"으로 저장합니다.
+  function applyCurrentRoundSelection(){
+    const yearSel = document.getElementById('settingsYear');
+    const roundSel = document.getElementById('settingsRound');
+    if (yearSel.value) localStorage.setItem(STORAGE_KEY_YEAR, yearSel.value);
+    if (roundSel.value) localStorage.setItem(STORAGE_KEY_ROUND, roundSel.value);
+    updateActiveRoundBadge();
+  }
+
+  function handleSettingsYearChange(){
+    renderRoundSettingsRoundSelect();
+  }
+  function handleSettingsRoundChange(){
+    updateSettingsRoundHint();
+    applyCurrentRoundSelection();
+    loadStats();
+  }
+
+  function updateActiveRoundBadge(){
+    const badge = document.getElementById('activeRoundBadge');
+    if (!badge) return;
+    const y = currentYear(), r = currentRound();
+    badge.textContent = (y && r) ? `현재 적용: ${y}년 ${r}` : '연도/차수를 선택해주세요';
+  }
+
+  function renderRoundManageList(){
+    const box = document.getElementById('roundManageList');
+    if (!box) return;
+    const rounds = loadRoundCache();
+    if (rounds.length === 0){
+      box.innerHTML = '<div class="empty">등록된 연도/차수가 없습니다. 아래에서 등록해주세요.</div>';
+      return;
+    }
+    box.innerHTML = rounds.map(r => `
+      <div class="zone-chip">
+        <span>${r.year}년 ${r.round}${(r.start || r.end) ? ` (${r.start || '?'}~${r.end || '?'})` : ''}</span>
+        <button type="button" onclick="removeRound('${r.year}','${r.round}')">삭제</button>
+      </div>
+    `).join('');
+  }
+
+  async function addRound(){
+    const url = apiUrlValue();
+    if (!url){ showToast('설정 탭에서 API 주소를 먼저 입력해주세요.', true); return; }
+    const year = document.getElementById('newRoundYear').value.trim();
+    const round = document.getElementById('newRoundName').value.trim();
+    const start = document.getElementById('newRoundStart').value;
+    const end = document.getElementById('newRoundEnd').value;
+    if (!year || !round){ showToast('연도와 차수를 모두 입력해주세요.', true); return; }
+
+    try{
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ type: 'round_add', data: { year, round, start, end } })
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || '등록 실패');
+      saveRoundCache(json.rounds || []);
+      document.getElementById('newRoundYear').value = '';
+      document.getElementById('newRoundName').value = '';
+      document.getElementById('newRoundStart').value = '';
+      document.getElementById('newRoundEnd').value = '';
+      localStorage.setItem(STORAGE_KEY_YEAR, year);
+      localStorage.setItem(STORAGE_KEY_ROUND, round);
+      renderRoundSettingsUI();
+      showToast(`${year}년 ${round} 등록 완료`);
+      loadStats();
+    }catch(err){
+      showToast('등록 실패: ' + err.message, true);
+    }
+  }
+
+  async function removeRound(year, round){
+    if (!confirm(`${year}년 ${round}를 목록에서 삭제할까요?`)) return;
+    const url = apiUrlValue();
+    if (!url) return;
+    try{
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ type: 'round_remove', data: { year, round } })
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || '삭제 실패');
+      saveRoundCache(json.rounds || []);
+      renderRoundSettingsUI();
+      showToast('삭제되었습니다');
+      loadStats();
+    }catch(err){
+      showToast('삭제 실패: ' + err.message, true);
+    }
   }
 
   async function syncZonesFromServer(selectedZone){
@@ -1221,9 +1345,11 @@
   function saveApiUrl(){
     const url = document.getElementById('apiUrl').value.trim();
     localStorage.setItem(STORAGE_KEY_URL, url);
+    updateApiUrlSourceNote();
     showToast('저장되었습니다. 연결을 확인합니다...');
     refreshStatus();
     syncZonesFromServer();
+    syncRoundsFromServer();
   }
 
   async function refreshStatus(){
@@ -1281,7 +1407,7 @@
     const g = id => document.getElementById(id)?.value ?? '';
     if (type === 'tree'){
       return {
-        '점검일': g('t_점검일'), '동/구역': g('t_동구역'), '연도': g('t_연도'), '차수': g('t_차수'),
+        '점검일': g('t_점검일'), '동/구역': g('t_동구역'),
         '상세 위치': g('t_상세위치'),
         '수종': getSpeciesValue(), '수량': g('t_수량'), '생육상태': g('t_생육상태'),
         '잎·가지 상태': g('t_잎가지상태'), '토양수분': g('t_토양수분'), '토양상태': g('t_토양상태'),
@@ -1291,7 +1417,7 @@
       };
     }
     return {
-      '점검일': g('b_점검일'), '동/구역': g('b_동구역'), '연도': g('b_연도'), '차수': g('b_차수'),
+      '점검일': g('b_점검일'), '동/구역': g('b_동구역'),
       '화단/구역 위치': g('b_위치'),
       '토양수분': g('b_토양수분'), '토양다짐': g('b_토양다짐'), '표토상태': g('b_표토상태'),
       '낙엽상태': g('b_낙엽상태'), '멀칭': g('b_멀칭'), '배수상태': g('b_배수상태'),
@@ -1449,6 +1575,20 @@
     if (!url){ showToast('설정 탭에서 API 주소를 먼저 입력해주세요.', true); switchTab('settings'); return; }
 
     const editing = editState[type];
+
+    // 연도/차수는 설정 탭에서 전체 적용되는 값입니다. 새 항목을 저장할 때만 자동으로 붙입니다.
+    // (수정할 때는 원래 기록된 연도/차수가 바뀌지 않도록 그대로 둡니다)
+    if (!editing){
+      const y = currentYear(), r = currentRound();
+      if (!y || !r){
+        showToast('설정 탭에서 연도/차수를 먼저 선택해주세요.', true);
+        switchTab('settings');
+        return;
+      }
+      data['연도'] = y;
+      data['차수'] = r;
+    }
+
     const btn = document.getElementById('submitBtn');
     btn.disabled = true;
     btn.textContent = editing ? '수정 저장 중...' : '저장 중...';
@@ -1472,8 +1612,6 @@
 
       const savedNo = editing ? editing.no : json.no;
       localStorage.setItem(STORAGE_KEY_ZONE, data['동/구역']);
-      localStorage.setItem(STORAGE_KEY_YEAR, data['연도']);
-      localStorage.setItem(STORAGE_KEY_ROUND, data['차수']);
       if (editing){
         showToast(`No.${savedNo} 수정 완료`);
         cancelEdit(type);
@@ -1556,11 +1694,19 @@
       zoneBox.innerHTML = '';
       return;
     }
+    const y = currentYear(), r = currentRound();
+    if (!y || !r){
+      gridBox.innerHTML = '<div class="stats-cell"><div class="n">-</div><div class="l">설정 탭에서 연도/차수를 먼저 선택해주세요</div></div>';
+      listBox.innerHTML = '';
+      zoneBox.innerHTML = '';
+      return;
+    }
     gridBox.innerHTML = '<div class="stats-cell"><div class="n">…</div><div class="l">불러오는 중</div></div>';
     listBox.innerHTML = '';
     zoneBox.innerHTML = '';
     try{
-      const res = await fetch(url + (url.indexOf('?') > -1 ? '&' : '?') + 'action=stats');
+      const sep = url.indexOf('?') > -1 ? '&' : '?';
+      const res = await fetch(url + sep + 'action=stats&year=' + encodeURIComponent(y) + '&round=' + encodeURIComponent(r));
       const json = await res.json();
       if (!json.ok) throw new Error(json.error || '통계를 불러오지 못했습니다');
       if (!json.stats) throw new Error('백엔드가 예전 버전입니다. Apps Script를 새 버전으로 다시 배포해주세요.');
@@ -1678,28 +1824,6 @@
       zoneSel.value = item['동/구역'];
     }
     document.getElementById(prefix + '_동구역직접입력').style.display = 'none';
-
-    // 연도/차수: 목록에 없으면(예: 예전 기록) 임시 옵션 추가 후 선택
-    if (item['연도']){
-      const yearSel = document.getElementById(prefix + '_연도');
-      if (!setSelectValueSafe(prefix + '_연도', String(item['연도']))){
-        const opt = document.createElement('option');
-        opt.value = String(item['연도']); opt.textContent = item['연도'] + '년 (목록에 없음)';
-        yearSel.appendChild(opt);
-        yearSel.value = String(item['연도']);
-      }
-      renderRoundSelect(prefix);
-    }
-    if (item['차수']){
-      if (!setSelectValueSafe(prefix + '_차수', item['차수'])){
-        const roundSel = document.getElementById(prefix + '_차수');
-        const opt = document.createElement('option');
-        opt.value = item['차수']; opt.textContent = item['차수'] + ' (목록에 없음)';
-        roundSel.appendChild(opt);
-        roundSel.value = item['차수'];
-      }
-      updateRoundHint(prefix);
-    }
 
     document.getElementById(prefix + '_점검일').value = item['점검일'] ? toDateInputValue(item['점검일']) : todayStr();
 
