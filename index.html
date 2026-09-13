@@ -217,6 +217,16 @@
   .hint{ font-size:16px; color:var(--sub); margin-top:2px; }
   .settings-note{ font-size:18px; color:var(--sub); line-height:1.6; }
 
+  .photo-queue-banner{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    background:var(--warn-bg); border-bottom:1px solid var(--line);
+    padding:10px 16px; font-size:16px; color:var(--rust); font-weight:700;
+  }
+  .photo-queue-banner button{
+    flex-shrink:0; border:1.5px solid var(--rust); background:transparent; color:var(--rust);
+    border-radius:8px; padding:6px 12px; font-size:15px; font-weight:700;
+  }
+
   .theme-toggle{ display:flex; gap:6px; }
   .theme-toggle button{
     flex:1; padding:10px 4px; border-radius:10px; border:1.5px solid var(--line);
@@ -300,6 +310,11 @@
   </nav>
 </header>
 
+<div class="photo-queue-banner" id="photoQueueBanner" style="display:none;">
+  <span id="photoQueueText">업로드 안 된 사진이 있습니다</span>
+  <button type="button" onclick="flushPhotoQueue()">🔄 다시 시도</button>
+</div>
+
 <main>
 
   <!-- ===================== 수목조사 ===================== -->
@@ -324,6 +339,17 @@
           <input type="text" id="t_동구역직접입력" placeholder="동/구역명을 입력 후 Enter" style="display:none;margin-top:8px;">
         </div>
       </div>
+      <div class="row2">
+        <div class="field">
+          <label>연도</label>
+          <select id="t_연도" onchange="handleYearChange('t')"></select>
+        </div>
+        <div class="field">
+          <label>차수</label>
+          <select id="t_차수" onchange="updateRoundHint('t')"></select>
+        </div>
+      </div>
+      <div class="hint" id="t_roundHint"></div>
       <div class="field">
         <label>상세 위치</label>
         <input type="text" id="t_상세위치" placeholder="예: 놀이터 옆 화단 3번목">
@@ -507,6 +533,17 @@
           <input type="text" id="b_동구역직접입력" placeholder="동/구역명을 입력 후 Enter" style="display:none;margin-top:8px;">
         </div>
       </div>
+      <div class="row2">
+        <div class="field">
+          <label>연도</label>
+          <select id="b_연도" onchange="handleYearChange('b')"></select>
+        </div>
+        <div class="field">
+          <label>차수</label>
+          <select id="b_차수" onchange="updateRoundHint('b')"></select>
+        </div>
+      </div>
+      <div class="hint" id="b_roundHint"></div>
       <div class="field">
         <label>화단/구역 위치 <span class="req">*</span></label>
         <input type="text" id="b_위치" placeholder="예: 정문 앞 원형화단">
@@ -723,11 +760,14 @@
 
   const STORAGE_KEY_URL = 'jogyeongsu_api_url';
   const STORAGE_KEY_ZONE = 'jogyeongsu_last_zone';
+  const STORAGE_KEY_YEAR = 'jogyeongsu_last_year';
+  const STORAGE_KEY_ROUND = 'jogyeongsu_last_round';
   const ZONE_CACHE_KEY = 'jogyeongsu_zone_cache'; // 오프라인 대비 캐시(서버가 원본)
+  const ROUND_CACHE_KEY = 'jogyeongsu_round_cache'; // 오프라인 대비 캐시(서버가 원본)
   const THEME_KEY = 'jogyeongsu_theme';
   const DEFAULT_API_URL = ''; // config.json도 못 불러오는 극히 드문 경우를 위한 최후의 기본값 (평소엔 비워둬도 됨)
 
-  const APP_VERSION = '3.2.0';
+  const APP_VERSION = '3.5.0';
 
   function todayStr(){
     const d = new Date();
@@ -799,10 +839,17 @@
     // 서버 응답 전까지는 캐시된 목록으로 우선 렌더링
     renderZoneSelects(savedZone);
     renderZoneManageList();
+    renderYearSelects();
 
     refreshStatus();
     syncZonesFromServer(savedZone);
+    syncRoundsFromServer();
     loadEntries('tree');
+
+    // 이전에 실패해서 남아있는 사진이 있으면 앱을 열 때 자동으로 다시 시도합니다.
+    updatePhotoQueueBanner();
+    if (savedUrl) flushPhotoQueue();
+    window.addEventListener('online', () => { if (apiUrlValue()) flushPhotoQueue(); });
 
     document.querySelectorAll('.tab-btn').forEach(btn=>{
       btn.addEventListener('click', () => switchTab(btn.dataset.tab));
@@ -859,6 +906,97 @@
     catch(e){ return []; }
   }
   function saveZoneCache(list){ localStorage.setItem(ZONE_CACHE_KEY, JSON.stringify(list)); }
+
+  // ---------- 연도/차수 (Code.gs의 SURVEY_ROUNDS 표에서 불러옴) ----------
+  function loadRoundCache(){
+    try{ return JSON.parse(localStorage.getItem(ROUND_CACHE_KEY)) || []; }
+    catch(e){ return []; }
+  }
+  function saveRoundCache(years){ localStorage.setItem(ROUND_CACHE_KEY, JSON.stringify(years)); }
+
+  async function syncRoundsFromServer(){
+    const url = apiUrlValue();
+    if (!url) { renderYearSelects(); return; }
+    try{
+      const sep = url.includes('?') ? '&' : '?';
+      const res = await fetch(url + sep + 'action=rounds', { method: 'GET' });
+      const json = await res.json();
+      if (json.ok){
+        saveRoundCache(json.years || []);
+        renderYearSelects();
+      }
+    }catch(err){
+      renderYearSelects(); // 오프라인이면 캐시된 목록으로 표시
+    }
+  }
+
+  function renderYearSelects(){
+    const years = loadRoundCache();
+    const savedYear = localStorage.getItem(STORAGE_KEY_YEAR) || '';
+    ['t','b'].forEach(prefix => {
+      const sel = document.getElementById(prefix + '_연도');
+      const prevValue = sel.value || savedYear;
+      sel.innerHTML = '';
+      if (years.length === 0){
+        const opt = document.createElement('option');
+        opt.value = ''; opt.textContent = '연도 정보 없음';
+        sel.appendChild(opt);
+      } else {
+        years.forEach(y => {
+          const opt = document.createElement('option');
+          opt.value = y.year; opt.textContent = y.year + '년';
+          sel.appendChild(opt);
+        });
+      }
+      const hasPrev = years.some(y => y.year === prevValue);
+      sel.value = hasPrev ? prevValue : (years[0] ? years[0].year : '');
+      renderRoundSelect(prefix);
+    });
+  }
+
+  function renderRoundSelect(prefix){
+    const years = loadRoundCache();
+    const yearSel = document.getElementById(prefix + '_연도');
+    const roundSel = document.getElementById(prefix + '_차수');
+    const hint = document.getElementById(prefix + '_roundHint');
+    const yearInfo = years.find(y => y.year === yearSel.value);
+    const rounds = yearInfo ? yearInfo.rounds : [];
+    const savedRound = localStorage.getItem(STORAGE_KEY_ROUND) || '';
+    const prevValue = roundSel.value || savedRound;
+
+    roundSel.innerHTML = '';
+    if (rounds.length === 0){
+      const opt = document.createElement('option');
+      opt.value = ''; opt.textContent = '차수 정보 없음';
+      roundSel.appendChild(opt);
+      hint.textContent = '';
+      return;
+    }
+    rounds.forEach(r => {
+      const opt = document.createElement('option');
+      opt.value = r.round; opt.textContent = r.round;
+      roundSel.appendChild(opt);
+    });
+    const hasPrev = rounds.some(r => r.round === prevValue);
+    roundSel.value = hasPrev ? prevValue : rounds[0].round;
+    updateRoundHint(prefix);
+  }
+
+  function updateRoundHint(prefix){
+    const years = loadRoundCache();
+    const yearSel = document.getElementById(prefix + '_연도');
+    const roundSel = document.getElementById(prefix + '_차수');
+    const hint = document.getElementById(prefix + '_roundHint');
+    const yearInfo = years.find(y => y.year === yearSel.value);
+    const roundInfo = yearInfo && yearInfo.rounds.find(r => r.round === roundSel.value);
+    hint.textContent = roundInfo && (roundInfo.start || roundInfo.end)
+      ? `조사기간: ${roundInfo.start || '?'} ~ ${roundInfo.end || '?'}`
+      : '';
+  }
+
+  function handleYearChange(prefix){
+    renderRoundSelect(prefix);
+  }
 
   async function syncZonesFromServer(selectedZone){
     const url = apiUrlValue();
@@ -1143,7 +1281,8 @@
     const g = id => document.getElementById(id)?.value ?? '';
     if (type === 'tree'){
       return {
-        '점검일': g('t_점검일'), '동/구역': g('t_동구역'), '상세 위치': g('t_상세위치'),
+        '점검일': g('t_점검일'), '동/구역': g('t_동구역'), '연도': g('t_연도'), '차수': g('t_차수'),
+        '상세 위치': g('t_상세위치'),
         '수종': getSpeciesValue(), '수량': g('t_수량'), '생육상태': g('t_생육상태'),
         '잎·가지 상태': g('t_잎가지상태'), '토양수분': g('t_토양수분'), '토양상태': g('t_토양상태'),
         '주변환경': g('t_주변환경'), '고사위험': g('t_고사위험'), '관찰내용': g('t_관찰내용'),
@@ -1152,7 +1291,8 @@
       };
     }
     return {
-      '점검일': g('b_점검일'), '동/구역': g('b_동구역'), '화단/구역 위치': g('b_위치'),
+      '점검일': g('b_점검일'), '동/구역': g('b_동구역'), '연도': g('b_연도'), '차수': g('b_차수'),
+      '화단/구역 위치': g('b_위치'),
       '토양수분': g('b_토양수분'), '토양다짐': g('b_토양다짐'), '표토상태': g('b_표토상태'),
       '낙엽상태': g('b_낙엽상태'), '멀칭': g('b_멀칭'), '배수상태': g('b_배수상태'),
       '잔디·지피 생육': g('b_잔디생육'), '관수시설': g('b_관수시설'), '수목 전반상태': g('b_수목전반상태'),
@@ -1165,6 +1305,137 @@
     if (type === 'tree' && !data['수종']) return '수종을 선택하거나 입력해주세요.';
     if (type === 'bed' && !data['화단/구역 위치']) return '화단/구역 위치를 입력해주세요.';
     return null;
+  }
+
+  // ---------- 사진 업로드 대기열 (IndexedDB) ----------
+  // 사진을 올리기 전에 먼저 기기에 저장해두고, 성공한 것만 큐에서 지웁니다.
+  // 이렇게 하면 업로드가 실패하거나 앱이 중간에 꺼져도 사진 자체는 사라지지 않고 나중에 다시 시도할 수 있습니다.
+  const PHOTO_DB_NAME = 'jogyeongsu_photo_queue';
+  const PHOTO_STORE = 'pending';
+
+  function openPhotoDB(){
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(PHOTO_DB_NAME, 1);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(PHOTO_STORE)){
+          db.createObjectStore(PHOTO_STORE, { keyPath: 'id', autoIncrement: true });
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  function queuePhoto(record){
+    return openPhotoDB().then(db => new Promise((resolve, reject) => {
+      const tx = db.transaction(PHOTO_STORE, 'readwrite');
+      const req = tx.objectStore(PHOTO_STORE).add(record);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    }));
+  }
+  function removeQueuedPhoto(id){
+    return openPhotoDB().then(db => new Promise((resolve, reject) => {
+      const tx = db.transaction(PHOTO_STORE, 'readwrite');
+      tx.objectStore(PHOTO_STORE).delete(id);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    }));
+  }
+  function getAllQueuedPhotos(){
+    return openPhotoDB().then(db => new Promise((resolve, reject) => {
+      const tx = db.transaction(PHOTO_STORE, 'readonly');
+      const req = tx.objectStore(PHOTO_STORE).getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    }));
+  }
+  async function updatePhotoQueueBanner(){
+    try{
+      const all = await getAllQueuedPhotos();
+      const banner = document.getElementById('photoQueueBanner');
+      const text = document.getElementById('photoQueueText');
+      if (all.length > 0){
+        text.textContent = `⚠️ 업로드 안 된 사진 ${all.length}장이 있습니다`;
+        banner.style.display = '';
+      } else {
+        banner.style.display = 'none';
+      }
+    }catch(e){ /* 이 기기에서 IndexedDB를 못 쓰면 조용히 무시 (업로드 자체는 계속 시도됨) */ }
+  }
+
+  async function uploadOnePhoto(record){
+    const url = apiUrlValue();
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        type: 'photo_attach',
+        data: {
+          type: record.surveyType,
+          No: record.no,
+          '동/구역': record.zone,
+          '상세 위치': record.location,
+          '화단/구역 위치': record.bedLocation,
+          '수종': record.species,
+          '관찰내용': record.note,
+          '주요 문제': record.note
+        },
+        photos: [{ name: record.name, mime: record.mime, base64: record.base64 }]
+      })
+    });
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error || '사진 업로드 실패');
+    if (json.failedCount > 0) throw new Error('사진을 저장하지 못했습니다');
+    return json;
+  }
+
+  // 조사 데이터 저장 직후 호출됩니다: 사진들을 먼저 기기에 저장해둔 뒤 업로드를 시도합니다.
+  async function uploadPhotosInBackground(type, no, data, photos){
+    const note = data['관찰내용'] || data['주요 문제'] || '';
+    const records = photos.map(p => ({
+      surveyType: type, no: no,
+      zone: data['동/구역'], location: data['상세 위치'], bedLocation: data['화단/구역 위치'],
+      species: data['수종'], note: note,
+      name: p.name, mime: p.mime, base64: p.base64
+    }));
+
+    for (const r of records){
+      try{ r.id = await queuePhoto(r); }catch(e){ /* 저장 못해도 아래에서 바로 업로드는 시도합니다 */ }
+    }
+    await updatePhotoQueueBanner();
+
+    showToast(`사진 ${records.length}장 업로드 중...`);
+    await flushPhotoQueue();
+  }
+
+  // 큐에 남아있는 사진들을 한 장씩 다시 업로드 시도합니다. (배너의 "다시 시도" 버튼 / 앱 시작 시 자동 실행)
+  async function flushPhotoQueue(){
+    let queued;
+    try{ queued = await getAllQueuedPhotos(); }catch(e){ return; }
+    if (!queued.length) return;
+
+    let successCount = 0, failCount = 0;
+    for (const record of queued){
+      try{
+        await uploadOnePhoto(record);
+        if (record.id !== undefined) await removeQueuedPhoto(record.id);
+        successCount++;
+      }catch(e){
+        failCount++; // 이 사진은 큐에 남겨두고 나머지를 계속 시도합니다
+      }
+    }
+    await updatePhotoQueueBanner();
+
+    if (successCount > 0 && failCount === 0){
+      showToast(`사진 업로드 완료 (${successCount}장)`);
+    } else if (successCount > 0 && failCount > 0){
+      showToast(`사진 ${successCount}장 업로드 완료, ${failCount}장은 아직 실패 (다시 시도 버튼을 눌러주세요)`, true);
+    } else if (failCount > 0){
+      showToast(`사진 업로드 실패 (${failCount}장 대기 중, 다시 시도 버튼을 눌러주세요)`, true);
+    }
+    loadEntries(currentTab === 'bed' ? 'bed' : 'tree');
+    loadStats();
   }
 
   async function submitForm(){
@@ -1182,6 +1453,7 @@
     btn.disabled = true;
     btn.textContent = editing ? '수정 저장 중...' : '저장 중...';
 
+    // 사진은 별도 요청으로 나중에 올립니다. 여기서는 조사 데이터만 빠르게 저장합니다.
     const photos = state[type].photos.map(p => ({
       name: p.name, mime: p.mime, base64: p.dataUrl.split(',')[1]
     }));
@@ -1193,21 +1465,30 @@
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // 프리플라이트 회피
-        body: JSON.stringify({ type: requestType, data, photos })
+        body: JSON.stringify({ type: requestType, data, photos: [] })
       });
       const json = await res.json();
       if (!json.ok) throw new Error(json.error || '저장 실패');
 
+      const savedNo = editing ? editing.no : json.no;
       localStorage.setItem(STORAGE_KEY_ZONE, data['동/구역']);
+      localStorage.setItem(STORAGE_KEY_YEAR, data['연도']);
+      localStorage.setItem(STORAGE_KEY_ROUND, data['차수']);
       if (editing){
-        showToast(`No.${editing.no} 수정 완료`);
+        showToast(`No.${savedNo} 수정 완료`);
         cancelEdit(type);
       } else {
-        showToast(`저장 완료! (No.${json.no}${json.photoNumber ? ', 사진 ' + json.photoNumber : ''})`);
+        showToast(`저장 완료! (No.${savedNo})`);
         resetForm(type, data['동/구역']);
       }
       loadEntries(type);
       loadStats();
+
+      // 조사 데이터는 이미 안전하게 저장되었으므로, 사진은 백그라운드에서 업로드합니다.
+      // (사진이 늦게 올라가거나 일부 실패해도 방금 저장된 데이터에는 영향이 없습니다)
+      if (photos.length > 0){
+        uploadPhotosInBackground(type, savedNo, data, photos);
+      }
     }catch(e){
       showToast('저장 실패: ' + e.message, true);
     }finally{
@@ -1397,6 +1678,28 @@
       zoneSel.value = item['동/구역'];
     }
     document.getElementById(prefix + '_동구역직접입력').style.display = 'none';
+
+    // 연도/차수: 목록에 없으면(예: 예전 기록) 임시 옵션 추가 후 선택
+    if (item['연도']){
+      const yearSel = document.getElementById(prefix + '_연도');
+      if (!setSelectValueSafe(prefix + '_연도', String(item['연도']))){
+        const opt = document.createElement('option');
+        opt.value = String(item['연도']); opt.textContent = item['연도'] + '년 (목록에 없음)';
+        yearSel.appendChild(opt);
+        yearSel.value = String(item['연도']);
+      }
+      renderRoundSelect(prefix);
+    }
+    if (item['차수']){
+      if (!setSelectValueSafe(prefix + '_차수', item['차수'])){
+        const roundSel = document.getElementById(prefix + '_차수');
+        const opt = document.createElement('option');
+        opt.value = item['차수']; opt.textContent = item['차수'] + ' (목록에 없음)';
+        roundSel.appendChild(opt);
+        roundSel.value = item['차수'];
+      }
+      updateRoundHint(prefix);
+    }
 
     document.getElementById(prefix + '_점검일').value = item['점검일'] ? toDateInputValue(item['점검일']) : todayStr();
 

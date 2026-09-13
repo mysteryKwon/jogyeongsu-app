@@ -20,7 +20,7 @@
 
 // ===== 설정 =====
 // 백엔드(Apps Script) 버전 - 프론트엔드 index.html의 APP_VERSION과 비교해 설정 탭에 표시됩니다.
-const SCRIPT_VERSION = '3.1.0';
+const SCRIPT_VERSION = '3.5.0';
 
 // 사진을 저장할 구글 드라이브 폴더 이름 (없으면 자동 생성됨)
 const PHOTO_FOLDER_NAME = '조경수조사_사진';
@@ -34,11 +34,30 @@ const SHEET_ZONES = '동구역목록'; // 없으면 자동 생성됩니다
 // 각 시트의 열 순서 (헤더와 동일한 순서로 값이 채워집니다)
 const COLS_TREE = ['No', '점검일', '동/구역', '상세 위치', '수종', '수량', '생육상태',
   '잎·가지 상태', '토양수분', '토양상태', '주변환경', '고사위험', '관찰내용',
-  '추정원인(선택)', '우선조치', '사진번호', '재점검일', '비고'];
+  '추정원인(선택)', '우선조치', '사진번호', '재점검일', '비고', '연도', '차수'];
 
 const COLS_BED = ['No', '점검일', '동/구역', '화단/구역 위치', '토양수분', '토양다짐',
   '표토상태', '낙엽상태', '멀칭', '배수상태', '잔디·지피 생육', '관수시설',
-  '수목 전반상태', '주요 문제', '우선 개선사항', '사진번호', '비고'];
+  '수목 전반상태', '주요 문제', '우선 개선사항', '사진번호', '비고', '연도', '차수'];
+
+// ===== 연도별 조사 차수 정의 (자유롭게 편집 가능) =====
+// 아래 표에 연도와 그 해의 차수·조사기간을 추가/수정하세요. 기간은 화면에 참고용으로 표시되며,
+// 저장을 막지는 않습니다 (조사자가 연도/차수를 직접 선택합니다).
+const SURVEY_ROUNDS = {
+  '2026': [
+    { round: '1차', start: '2026-03-01', end: '2026-05-31' },
+    { round: '2차', start: '2026-09-01', end: '2026-11-30' }
+  ]
+  // 예시) '2027': [ { round: '1차', start: '2027-03-01', end: '2027-05-31' } ]
+};
+
+function getSurveyRoundsConfig() {
+  const years = Object.keys(SURVEY_ROUNDS).sort((a, b) => Number(b) - Number(a)); // 최신 연도가 먼저 오도록 정렬
+  return years.map(y => ({
+    year: y,
+    rounds: SURVEY_ROUNDS[y].map(r => ({ round: r.round, start: r.start, end: r.end }))
+  }));
+}
 
 const COLS_PHOTO = ['사진번호', '촬영일', '동/구역', '위치', '대상 수목/화단',
   '촬영구분', '파일명/구글드라이브 링크', '설명', '재촬영 예정일'];
@@ -51,6 +70,9 @@ function doGet(e) {
   try {
     if (action === 'zones') {
       return jsonOut({ ok: true, zones: getZoneList(ss), version: SCRIPT_VERSION });
+    }
+    if (action === 'rounds') {
+      return jsonOut({ ok: true, years: getSurveyRoundsConfig(), version: SCRIPT_VERSION });
     }
     if (action === 'list') {
       const type = e.parameter.type; // 'tree' | 'bed'
@@ -107,6 +129,9 @@ function doPost(e) {
     if (type === 'tree_delete' || type === 'bed_delete') {
       return jsonOut(deleteSurveyRow(ss, type, data));
     }
+    if (type === 'photo_attach') {
+      return jsonOut(attachPhotos(ss, data, photos));
+    }
 
     throw new Error('알 수 없는 요청 유형입니다: ' + type);
   } catch (err) {
@@ -153,26 +178,21 @@ function createSurveyRow(ss, type, data, photos) {
   const sheet = ss.getSheetByName(sheetName);
   if (!sheet) throw new Error('시트를 찾을 수 없습니다: ' + sheetName);
 
-  let photoNumber = '';
-  if (photos.length > 0) {
-    const links = photos.map(p => savePhotoToDrive(p.name, p.mime, p.base64));
-    photoNumber = generatePhotoNumber(ss);
-    appendPhotoRows(ss, photoNumber, data, links, type);
-  }
-
+  // 사진은 이 함수에서 처리하지 않습니다 (attachPhotos에서 별도로 처리).
+  // 조사 데이터를 먼저 빠르고 안전하게 저장해, 사진 업로드가 늦거나 실패해도 데이터가 사라지지 않도록 합니다.
   const nextNo = getNextNo(sheet);
   data['No'] = nextNo;
-  data['사진번호'] = photoNumber || data['사진번호'] || '';
+  data['사진번호'] = data['사진번호'] || '';
 
   const row = cols.map(c => data[c] !== undefined ? data[c] : '');
   sheet.appendRow(row);
   writeStatsToSheet(ss, computeStats(ss));
 
-  return { ok: true, no: nextNo, photoNumber: photoNumber, version: SCRIPT_VERSION };
+  return { ok: true, no: nextNo, photoNumber: '', version: SCRIPT_VERSION };
 }
 
 function updateSurveyRow(ss, type, data, photos) {
-  const { isTree, sheetName, cols } = sheetAndColsFor(type);
+  const { sheetName, cols } = sheetAndColsFor(type);
   const sheet = ss.getSheetByName(sheetName);
   if (!sheet) throw new Error('시트를 찾을 수 없습니다: ' + sheetName);
 
@@ -185,23 +205,51 @@ function updateSurveyRow(ss, type, data, photos) {
   const existingRow = sheet.getRange(rowIndex, 1, 1, cols.length).getValues()[0];
   const existingPhotoNo = photoColIdx > -1 ? (existingRow[photoColIdx] || '') : '';
 
-  let newPhotoNumber = '';
-  if (photos.length > 0) {
-    const links = photos.map(p => savePhotoToDrive(p.name, p.mime, p.base64));
-    newPhotoNumber = generatePhotoNumber(ss);
-    appendPhotoRows(ss, newPhotoNumber, data, links, isTree ? 'tree' : 'bed');
-  }
-
+  // 사진은 이 함수에서 처리하지 않습니다 (attachPhotos에서 별도로 처리). 기존 사진번호는 그대로 유지합니다.
   data['No'] = no;
-  data['사진번호'] = newPhotoNumber
-    ? (existingPhotoNo ? existingPhotoNo + ', ' + newPhotoNumber : newPhotoNumber)
-    : existingPhotoNo;
+  data['사진번호'] = existingPhotoNo;
 
   const row = cols.map(c => data[c] !== undefined ? data[c] : '');
   sheet.getRange(rowIndex, 1, 1, cols.length).setValues([row]);
   writeStatsToSheet(ss, computeStats(ss));
 
-  return { ok: true, no: no, photoNumber: data['사진번호'], version: SCRIPT_VERSION };
+  return { ok: true, no: no, photoNumber: existingPhotoNo, version: SCRIPT_VERSION };
+}
+
+// 조사 데이터가 이미 저장된 뒤, 사진만 별도로 업로드해 연결합니다.
+// 사진 하나가 실패해도 나머지는 계속 시도하고, 실패 건수만 세어 돌려줍니다 (전체 실패로 막지 않음).
+function attachPhotos(ss, data, photos) {
+  const surveyType = data.type; // 'tree' | 'bed'
+  const { sheetName, cols } = sheetAndColsFor(surveyType);
+  const sheet = ss.getSheetByName(sheetName);
+  if (!sheet) throw new Error('시트를 찾을 수 없습니다: ' + sheetName);
+
+  const no = data['No'];
+  const rowIndex = findRowByNo(sheet, no);
+  if (rowIndex === -1) throw new Error('사진을 연결할 항목(No ' + no + ')을 찾을 수 없습니다.');
+
+  const links = [];
+  let failedCount = 0;
+  (photos || []).forEach(p => {
+    try {
+      links.push(savePhotoToDrive(p.name, p.mime, p.base64));
+    } catch (e) {
+      failedCount++; // 이 사진만 건너뛰고 나머지는 계속 진행
+    }
+  });
+
+  let photoNumber = '';
+  if (links.length > 0) {
+    photoNumber = generatePhotoNumber(ss);
+    appendPhotoRows(ss, photoNumber, data, links, surveyType);
+
+    const photoColIdx = cols.indexOf('사진번호');
+    const existing = String(sheet.getRange(rowIndex, photoColIdx + 1).getValue() || '');
+    const merged = existing ? existing + ', ' + photoNumber : photoNumber;
+    sheet.getRange(rowIndex, photoColIdx + 1).setValue(merged);
+  }
+
+  return { ok: true, photoNumber: photoNumber, failedCount: failedCount, version: SCRIPT_VERSION };
 }
 
 function deleteSurveyRow(ss, type, data) {
